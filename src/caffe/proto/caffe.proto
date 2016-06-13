@@ -306,7 +306,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 145 (last added: crop_param)
+// LayerParameter next available layer-specific ID: 147 (last added: boosting_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -354,6 +354,7 @@ message LayerParameter {
   // engine parameter for selecting the implementation.
   // The default for the engine is set by the ENGINE switch at compile-time.
   optional AccuracyParameter accuracy_param = 102;
+  optional ScoreParameter score_param = 145;
   optional ArgMaxParameter argmax_param = 103;
   optional BatchNormParameter batch_norm_param = 139;
   optional BiasParameter bias_param = 141;
@@ -375,6 +376,7 @@ message LayerParameter {
   optional ImageDataParameter image_data_param = 115;
   optional InfogainLossParameter infogain_loss_param = 116;
   optional InnerProductParameter inner_product_param = 117;
+  optional BoostingParameter boosting_param = 146;
   optional InputParameter input_param = 143;
   optional LogParameter log_param = 134;
   optional LRNParameter lrn_param = 118;
@@ -467,6 +469,11 @@ message AccuracyParameter {
   // If specified, ignore instances with the given label.
   optional int32 ignore_label = 3;
 }
+
+message ScoreParameter {
+  optional string dest_file = 1;
+}
+
 
 message ArgMaxParameter {
   // If true produce pairs (argmax, maxval)
@@ -812,7 +819,15 @@ message InnerProductParameter {
   // but rather the transfer flag of operations will be toggled accordingly.
   optional bool transpose = 6 [default = false];
 }
+message BoostingParameter {
+  optional uint32 num_output = 1; // The number of outputs for the layer
+  optional float imith = 2 [default=0.1];
 
+  // The first axis to be lumped into a single inner product computation;
+  // all preceding axes are retained in the output.
+  // May be negative to index from the end (e.g., -1 for the last axis).
+  optional int32 axis = 5 [default = 1];
+}
 message InputParameter {
   // This layer produces N >= 1 top blob(s) to be assigned manually.
   // Define N shapes to set a shape for each top.
