@@ -474,9 +474,9 @@ void BoostingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     avgnew = han_avg(bottom_diff, bottom[0]->count(), maxnum, minnum);
     printf("avg=%f, maxnum=%f, minnum=%f\n",avgnew, maxnum, minnum);*/
 }
-#ifdef CPU_ONLY
-STUB_GPU(BoostingLayer);
-#endif
+//#ifdef CPU_ONLY
+//STUB_GPU(BoostingLayer);
+//#endif
 
 INSTANTIATE_CLASS(BoostingLayer);
 REGISTER_LAYER_CLASS(Boosting);
