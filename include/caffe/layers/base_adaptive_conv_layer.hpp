@@ -15,9 +15,9 @@ namespace caffe {
  *        ConvolutionLayer and DeconvolutionLayer.
  */
 template <typename Dtype>
-class BaseConvolutionLayer : public Layer<Dtype> {
+class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
  public:
-  explicit BaseConvolutionLayer(const LayerParameter& param)
+  explicit BaseAdaptiveConvolutionLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
@@ -63,6 +63,8 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   virtual void compute_output_shape() = 0;
 
   /// @brief The spatial dimensions of a filter kernel.
+  Blob<double> kernel_shape_up_;
+  Blob<double> kernel_shape_down_;
   Blob<int> kernel_shape_;
   /// @brief The spatial dimensions of the stride.
   Blob<int> stride_;
@@ -81,17 +83,19 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   int num_spatial_axes_;
   int bottom_dim_;
   int top_dim_;
-
   int channel_axis_;
   int num_;
   int channels_;
   int group_;
+  double kernel_size_;
   int out_spatial_dim_;
-  int weight_offset_;
+  int weight_offset_up_;
+  int weight_offset_down_;
   int num_output_;
   bool bias_term_;
   bool is_1x1_;
   bool force_nd_im2col_;
+
 
  private:
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
@@ -161,12 +165,18 @@ class BaseConvolutionLayer : public Layer<Dtype> {
   int conv_out_channels_;
   int conv_in_channels_;
   int conv_out_spatial_dim_;
-  int kernel_dim_;
-  int col_offset_;
+  int kernel_dim_down_;
+  int kernel_dim_up_;
+  int col_offset_up_;
+  int col_offset_down_;
   int output_offset_;
 
+  ConvolutionParameter conv_param_;
   Blob<Dtype> col_buffer_;
+  Blob<Dtype> weight_filter_up_;
+  Blob<Dtype> weight_filter_down_;
   Blob<Dtype> bias_multiplier_;
+
 };
 
 }  // namespace caffe

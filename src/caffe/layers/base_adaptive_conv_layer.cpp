@@ -2,19 +2,19 @@
 #include <vector>
 
 #include "caffe/filler.hpp"
-#include "caffe/layers/base_conv_layer.hpp"
+#include "caffe/layers/base_adaptive_conv_layer.hpp"
 #include "caffe/util/im2col.hpp"
 #include "caffe/util/math_functions.hpp"
 
 namespace caffe {
 
 template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+void BaseAdaptiveConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   // Configure the kernel size, padding, stride, and inputs.
-  ConvolutionParameter conv_param = this->layer_param_.convolution_param();
-  force_nd_im2col_ = conv_param.force_nd_im2col();
-  channel_axis_ = bottom[0]->CanonicalAxisIndex(conv_param.axis());
+  conv_param_ = this->layer_param_.convolution_param();
+  force_nd_im2col_ = conv_param_.force_nd_im2col();
+  channel_axis_ = bottom[0]->CanonicalAxisIndex(conv_param_.axis());
   const int first_spatial_axis = channel_axis_ + 1;
   const int num_axes = bottom[0]->num_axes();
   num_spatial_axes_ = num_axes - first_spatial_axis;
@@ -24,22 +24,22 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   // Setup filter kernel dimensions (kernel_shape_).
   kernel_shape_.Reshape(spatial_dim_blob_shape);
   int* kernel_shape_data = kernel_shape_.mutable_cpu_data();
-  if (conv_param.has_kernel_h() || conv_param.has_kernel_w()) {
+  if (conv_param_.has_kernel_h() || conv_param_.has_kernel_w()) {
     CHECK_EQ(num_spatial_axes_, 2)
         << "kernel_h & kernel_w can only be used for 2D convolution.";
-    CHECK_EQ(0, conv_param.kernel_size_size())
+    CHECK_EQ(0, conv_param_.kernel_size_size())
         << "Either kernel_size or kernel_h/w should be specified; not both.";
-    kernel_shape_data[0] = conv_param.kernel_h();
-    kernel_shape_data[1] = conv_param.kernel_w();
+    kernel_shape_data[0] = conv_param_.kernel_h();
+    kernel_shape_data[1] = conv_param_.kernel_w();
   } else {
-    const int num_kernel_dims = conv_param.kernel_size_size();
+    const int num_kernel_dims = conv_param_.kernel_size_size();
     CHECK(num_kernel_dims == 1 || num_kernel_dims == num_spatial_axes_)
         << "kernel_size must be specified once, or once per spatial dimension "
         << "(kernel_size specified " << num_kernel_dims << " times; "
         << num_spatial_axes_ << " spatial dims).";
       for (int i = 0; i < num_spatial_axes_; ++i) {
         kernel_shape_data[i] =
-            conv_param.kernel_size((num_kernel_dims == 1) ? 0 : i);
+            conv_param_.kernel_size((num_kernel_dims == 1) ? 0 : i);
       }
   }
   for (int i = 0; i < num_spatial_axes_; ++i) {
@@ -48,15 +48,15 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   // Setup stride dimensions (stride_).
   stride_.Reshape(spatial_dim_blob_shape);
   int* stride_data = stride_.mutable_cpu_data();
-  if (conv_param.has_stride_h() || conv_param.has_stride_w()) {
+  if (conv_param_.has_stride_h() || conv_param_.has_stride_w()) {
     CHECK_EQ(num_spatial_axes_, 2)
         << "stride_h & stride_w can only be used for 2D convolution.";
-    CHECK_EQ(0, conv_param.stride_size())
+    CHECK_EQ(0, conv_param_.stride_size())
         << "Either stride or stride_h/w should be specified; not both.";
-    stride_data[0] = conv_param.stride_h();
-    stride_data[1] = conv_param.stride_w();
+    stride_data[0] = conv_param_.stride_h();
+    stride_data[1] = conv_param_.stride_w();
   } else {
-    const int num_stride_dims = conv_param.stride_size();
+    const int num_stride_dims = conv_param_.stride_size();
     CHECK(num_stride_dims == 0 || num_stride_dims == 1 ||
           num_stride_dims == num_spatial_axes_)
         << "stride must be specified once, or once per spatial dimension "
@@ -65,22 +65,22 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     const int kDefaultStride = 1;
     for (int i = 0; i < num_spatial_axes_; ++i) {
       stride_data[i] = (num_stride_dims == 0) ? kDefaultStride :
-          conv_param.stride((num_stride_dims == 1) ? 0 : i);
+          conv_param_.stride((num_stride_dims == 1) ? 0 : i);
       CHECK_GT(stride_data[i], 0) << "Stride dimensions must be nonzero.";
     }
   }
   // Setup pad dimensions (pad_).
   pad_.Reshape(spatial_dim_blob_shape);
   int* pad_data = pad_.mutable_cpu_data();
-  if (conv_param.has_pad_h() || conv_param.has_pad_w()) {
+  if (conv_param_.has_pad_h() || conv_param_.has_pad_w()) {
     CHECK_EQ(num_spatial_axes_, 2)
         << "pad_h & pad_w can only be used for 2D convolution.";
-    CHECK_EQ(0, conv_param.pad_size())
+    CHECK_EQ(0, conv_param_.pad_size())
         << "Either pad or pad_h/w should be specified; not both.";
-    pad_data[0] = conv_param.pad_h();
-    pad_data[1] = conv_param.pad_w();
+    pad_data[0] = conv_param_.pad_h();
+    pad_data[1] = conv_param_.pad_w();
   } else {
-    const int num_pad_dims = conv_param.pad_size();
+    const int num_pad_dims = conv_param_.pad_size();
     CHECK(num_pad_dims == 0 || num_pad_dims == 1 ||
           num_pad_dims == num_spatial_axes_)
         << "pad must be specified once, or once per spatial dimension "
@@ -89,13 +89,13 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     const int kDefaultPad = 0;
     for (int i = 0; i < num_spatial_axes_; ++i) {
       pad_data[i] = (num_pad_dims == 0) ? kDefaultPad :
-          conv_param.pad((num_pad_dims == 1) ? 0 : i);
+          conv_param_.pad((num_pad_dims == 1) ? 0 : i);
     }
   }
   // Setup dilation dimensions (dilation_).
   dilation_.Reshape(spatial_dim_blob_shape);
   int* dilation_data = dilation_.mutable_cpu_data();
-  const int num_dilation_dims = conv_param.dilation_size();
+  const int num_dilation_dims = conv_param_.dilation_size();
   CHECK(num_dilation_dims == 0 || num_dilation_dims == 1 ||
         num_dilation_dims == num_spatial_axes_)
       << "dilation must be specified once, or once per spatial dimension "
@@ -104,7 +104,7 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   const int kDefaultDilation = 1;
   for (int i = 0; i < num_spatial_axes_; ++i) {
     dilation_data[i] = (num_dilation_dims == 0) ? kDefaultDilation :
-                       conv_param.dilation((num_dilation_dims == 1) ? 0 : i);
+                       conv_param_.dilation((num_dilation_dims == 1) ? 0 : i);
   }
   // Special case: im2col is the identity for 1x1 convolution with stride 1
   // and no padding, so flag for skipping the buffer and transformation.
@@ -176,14 +176,14 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       bias_filler->Fill(this->blobs_[1].get());
     }
   }
-  kernel_dim_ = this->blobs_[0]->count(1);
-  weight_offset_ = conv_out_channels_ * kernel_dim_ / group_;
+  //kernel_dim_ = this->blobs_[0]->count(1);
+  //weight_offset_ = conv_out_channels_ * kernel_dim_ / group_;
   // Propagate gradients to the parameters (as directed by backward pass).
   this->param_propagate_down_.resize(this->blobs_.size(), true);
 }
 
 template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
+void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   const int first_spatial_axis = channel_axis_ + 1;
   CHECK_EQ(bottom[0]->num_axes(), first_spatial_axis + num_spatial_axes_)
@@ -196,6 +196,53 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     CHECK(bottom[0]->shape() == bottom[bottom_id]->shape())
         << "All inputs must have the same shape.";
   }
+  //create the weight_up and weight_down
+  //in future, we can check whether it kernel size is changed
+  double* kernel_shape_data_up = kernel_shape_up_.mutable_cpu_data();
+  double* kernel_shape_data_down = kernel_shape_down_.mutable_cpu_data();
+    if (conv_param_.has_kernel_h() || conv_param_.has_kernel_w()) {
+      CHECK_EQ(num_spatial_axes_, 2)
+          << "kernel_h & kernel_w can only be used for 2D convolution.";
+      CHECK_EQ(0, conv_param_.kernel_size_size())
+          << "Either kernel_size or kernel_h/w should be specified; not both.";
+      kernel_shape_data_up[0] = round(conv_param_.kernel_h())+2;
+      kernel_shape_data_up[1] = round(conv_param_.kernel_w())+2;
+      kernel_shape_data_down[0] = round(conv_param_.kernel_h())-2;
+      kernel_shape_data_down[1] = round(conv_param_.kernel_w())-2;
+    } else {
+      const int num_kernel_dims = conv_param_.kernel_size_size();
+      CHECK(num_kernel_dims == 1 || num_kernel_dims == num_spatial_axes_)
+          << "kernel_size must be specified once, or once per spatial dimension "
+          << "(kernel_size specified " << num_kernel_dims << " times; "
+          << num_spatial_axes_ << " spatial dims).";
+        for (int i = 0; i < num_spatial_axes_; ++i) {
+          kernel_shape_data_up[i] =
+              round(conv_param_.kernel_size((num_kernel_dims == 1) ? 0 : i))+2;
+          kernel_shape_data_down[i] =
+              round(conv_param_.kernel_size((num_kernel_dims == 1) ? 0 : i))-2;
+        }
+    }
+    for (int i = 0; i < num_spatial_axes_; ++i) {
+      CHECK_GT(kernel_shape_data_up[i], 0) << "Filter dimensions must be nonzero.";
+      CHECK_GT(kernel_shape_data_down[i], 0) << "Filter dimensions must be nonzero.";
+  }
+  vector<int> weight_shape_up(2);
+  vector<int> weight_shape_down(2);
+  weight_shape_up[0] = conv_out_channels_;
+  weight_shape_up[1] = conv_in_channels_ / group_;
+  weight_shape_down[0] = conv_out_channels_;
+  weight_shape_down[1] = conv_in_channels_ / group_;
+  for (int i = 0; i < num_spatial_axes_; ++i) {
+    weight_shape_up.push_back(kernel_shape_data_up[i]);
+    weight_shape_down.push_back(kernel_shape_data_down[i]);
+  }
+  weight_filter_up_.Reshape(weight_shape_up);
+  weight_filter_down_.Reshape(weight_shape_up);
+  kernel_dim_up_ = weight_filter_up_.count(1);
+  kernel_dim_down_ =weight_filter_down_.count(1);
+  weight_offset_up_ = conv_out_channels_ * kernel_dim_up_ / group_;
+  weight_offset_down_ = conv_out_channels_ * kernel_dim_down_ / group_;
+
   // Shape the tops.
   bottom_shape_ = &bottom[0]->shape();
   compute_output_shape();
@@ -213,7 +260,8 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   } else {
     conv_out_spatial_dim_ = top[0]->count(first_spatial_axis);
   }
-  col_offset_ = kernel_dim_ * conv_out_spatial_dim_;
+  col_offset_up_ = kernel_dim_up_ * conv_out_spatial_dim_;
+  col_offset_down_ = kernel_dim_down_ * conv_out_spatial_dim_;
   output_offset_ = conv_out_channels_ * conv_out_spatial_dim_ / group_;
   // Setup input dimensions (conv_input_shape_).
   vector<int> bottom_dim_blob_shape(1, num_spatial_axes_ + 1);
@@ -230,7 +278,7 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   // overly large memory usage. In the special case of 1x1 convolution
   // it goes lazily unused to save memory.
   col_buffer_shape_.clear();
-  col_buffer_shape_.push_back(kernel_dim_ * group_);
+  col_buffer_shape_.push_back(kernel_dim_up_ * group_);
   for (int i = 0; i < num_spatial_axes_; ++i) {
     if (reverse_dimensions()) {
       col_buffer_shape_.push_back(input_shape(i + 1));
@@ -254,9 +302,10 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
+void BaseAdaptiveConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
     const Dtype* weights, Dtype* output, bool skip_im2col) {
   const Dtype* col_buff = input;
+  //add another caffe_cpu_gemm with the
   if (!is_1x1_) {
     if (!skip_im2col) {
       conv_im2col_cpu(input, col_buffer_.mutable_cpu_data());
@@ -265,14 +314,19 @@ void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
   }
   for (int g = 0; g < group_; ++g) {
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
-        group_, conv_out_spatial_dim_, kernel_dim_,
-        (Dtype)1., weights + weight_offset_ * g, col_buff + col_offset_ * g,
-        (Dtype)0., output + output_offset_ * g);
+        group_, conv_out_spatial_dim_, kernel_dim_up_,
+        (Dtype)1., weights + weight_offset_up_ * g, col_buff + col_offset_up_ * g,
+        (Dtype)0., output + output_offset_ * g);//with kernal size round(k)+2
+    //the kernel_dim_, weight_offset_, col_offset_ will be different
+    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
+            group_, conv_out_spatial_dim_, kernel_dim_down_,
+            (Dtype)1., weights + weight_offset_down_ * g, col_buff + col_offset_down_ * g,
+            (Dtype)0., output + output_offset_ * g);//with kernal size round(k)-2
   }
 }
 
 template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::forward_cpu_bias(Dtype* output,
+void BaseAdaptiveConvolutionLayer<Dtype>::forward_cpu_bias(Dtype* output,
     const Dtype* bias) {
   caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
       out_spatial_dim_, 1, (Dtype)1., bias, bias_multiplier_.cpu_data(),
@@ -280,17 +334,21 @@ void BaseConvolutionLayer<Dtype>::forward_cpu_bias(Dtype* output,
 }
 
 template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::backward_cpu_gemm(const Dtype* output,
+void BaseAdaptiveConvolutionLayer<Dtype>::backward_cpu_gemm(const Dtype* output,
     const Dtype* weights, Dtype* input) {
   Dtype* col_buff = col_buffer_.mutable_cpu_data();
   if (is_1x1_) {
     col_buff = input;
   }
   for (int g = 0; g < group_; ++g) {
-    caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans, kernel_dim_,
+    caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans, kernel_dim_up_,
         conv_out_spatial_dim_, conv_out_channels_ / group_,
-        (Dtype)1., weights + weight_offset_ * g, output + output_offset_ * g,
-        (Dtype)0., col_buff + col_offset_ * g);
+        (Dtype)1., weights + weight_offset_up_ * g, output + output_offset_ * g,
+        (Dtype)0., col_buff + col_offset_up_ * g);
+    caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans, kernel_dim_down_,
+            conv_out_spatial_dim_, conv_out_channels_ / group_,
+            (Dtype)1., weights + weight_offset_down_ * g, output + output_offset_ * g,
+            (Dtype)0., col_buff + col_offset_down_ * g);
   }
   if (!is_1x1_) {
     conv_col2im_cpu(col_buff, input);
@@ -298,7 +356,7 @@ void BaseConvolutionLayer<Dtype>::backward_cpu_gemm(const Dtype* output,
 }
 
 template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::weight_cpu_gemm(const Dtype* input,
+void BaseAdaptiveConvolutionLayer<Dtype>::weight_cpu_gemm(const Dtype* input,
     const Dtype* output, Dtype* weights) {
   const Dtype* col_buff = input;
   if (!is_1x1_) {
@@ -307,14 +365,18 @@ void BaseConvolutionLayer<Dtype>::weight_cpu_gemm(const Dtype* input,
   }
   for (int g = 0; g < group_; ++g) {
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, conv_out_channels_ / group_,
-        kernel_dim_, conv_out_spatial_dim_,
-        (Dtype)1., output + output_offset_ * g, col_buff + col_offset_ * g,
-        (Dtype)1., weights + weight_offset_ * g);
+        kernel_dim_up_, conv_out_spatial_dim_,
+        (Dtype)1., output + output_offset_ * g, col_buff + col_offset_up_ * g,
+        (Dtype)1., weights + weight_offset_up_ * g);
+    caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, conv_out_channels_ / group_,
+           kernel_dim_down_, conv_out_spatial_dim_,
+           (Dtype)1., output + output_offset_ * g, col_buff + col_offset_down_ * g,
+           (Dtype)1., weights + weight_offset_down_ * g);
   }
 }
 
 template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::backward_cpu_bias(Dtype* bias,
+void BaseAdaptiveConvolutionLayer<Dtype>::backward_cpu_bias(Dtype* bias,
     const Dtype* input) {
   caffe_cpu_gemv<Dtype>(CblasNoTrans, num_output_, out_spatial_dim_, 1.,
       input, bias_multiplier_.cpu_data(), 1., bias);
@@ -322,75 +384,79 @@ void BaseConvolutionLayer<Dtype>::backward_cpu_bias(Dtype* bias,
 
 #ifndef CPU_ONLY
 
-template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::forward_gpu_gemm(const Dtype* input,
-    const Dtype* weights, Dtype* output, bool skip_im2col) {
-  const Dtype* col_buff = input;
-  if (!is_1x1_) {
-    if (!skip_im2col) {
-      conv_im2col_gpu(input, col_buffer_.mutable_gpu_data());
-    }
-    col_buff = col_buffer_.gpu_data();
-  }
-  for (int g = 0; g < group_; ++g) {
-    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
-        group_, conv_out_spatial_dim_, kernel_dim_,
-        (Dtype)1., weights + weight_offset_ * g, col_buff + col_offset_ * g,
-        (Dtype)0., output + output_offset_ * g);
-  }
-}
-
-template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::forward_gpu_bias(Dtype* output,
-    const Dtype* bias) {
-  caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
-      out_spatial_dim_, 1, (Dtype)1., bias, bias_multiplier_.gpu_data(),
-      (Dtype)1., output);
-}
-
-template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::backward_gpu_gemm(const Dtype* output,
-    const Dtype* weights, Dtype* input) {
-  Dtype* col_buff = col_buffer_.mutable_gpu_data();
-  if (is_1x1_) {
-    col_buff = input;
-  }
-  for (int g = 0; g < group_; ++g) {
-    caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, kernel_dim_,
-        conv_out_spatial_dim_, conv_out_channels_ / group_,
-        (Dtype)1., weights + weight_offset_ * g, output + output_offset_ * g,
-        (Dtype)0., col_buff + col_offset_ * g);
-  }
-  if (!is_1x1_) {
-    conv_col2im_gpu(col_buff, input);
-  }
-}
-
-template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::weight_gpu_gemm(const Dtype* input,
-    const Dtype* output, Dtype* weights) {
-  const Dtype* col_buff = input;
-  if (!is_1x1_) {
-    conv_im2col_gpu(input, col_buffer_.mutable_gpu_data());
-    col_buff = col_buffer_.gpu_data();
-  }
-  for (int g = 0; g < group_; ++g) {
-    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, conv_out_channels_ / group_,
-        kernel_dim_, conv_out_spatial_dim_,
-        (Dtype)1., output + output_offset_ * g, col_buff + col_offset_ * g,
-        (Dtype)1., weights + weight_offset_ * g);
-  }
-}
-
-template <typename Dtype>
-void BaseConvolutionLayer<Dtype>::backward_gpu_bias(Dtype* bias,
-    const Dtype* input) {
-  caffe_gpu_gemv<Dtype>(CblasNoTrans, num_output_, out_spatial_dim_, 1.,
-      input, bias_multiplier_.gpu_data(), 1., bias);
-}
+//template <typename Dtype>
+//void BaseAdaptiveConvolutionLayer<Dtype>::forward_gpu_gemm(const Dtype* input,
+//    const Dtype* weights, Dtype* output, bool skip_im2col) {
+//  const Dtype* col_buff = input;
+//  if (!is_1x1_) {
+//    if (!skip_im2col) {
+//      conv_im2col_gpu(input, col_buffer_.mutable_gpu_data());
+//    }
+//    col_buff = col_buffer_.gpu_data();
+//  }
+//  for (int g = 0; g < group_; ++g) {
+//    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
+//        group_, conv_out_spatial_dim_, kernel_dim_up_,
+//        (Dtype)1., weights + weight_offset_up_ * g, col_buff + col_offset_down_ * g,
+//        (Dtype)0., output + output_offset_ * g);
+//    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
+//            group_, conv_out_spatial_dim_, kernel_dim_down_,
+//            (Dtype)1., weights + weight_offset_down_ * g, col_buff + col_offset_down_ * g,
+//            (Dtype)0., output + output_offset_ * g);
+//  }
+//}
+//
+//template <typename Dtype>
+//void BaseAdaptiveConvolutionLayer<Dtype>::forward_gpu_bias(Dtype* output,
+//    const Dtype* bias) {
+//  caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_output_,
+//      out_spatial_dim_, 1, (Dtype)1., bias, bias_multiplier_.gpu_data(),
+//      (Dtype)1., output);
+//}
+//
+//template <typename Dtype>
+//void BaseAdaptiveConvolutionLayer<Dtype>::backward_gpu_gemm(const Dtype* output,
+//    const Dtype* weights, Dtype* input) {
+//  Dtype* col_buff = col_buffer_.mutable_gpu_data();
+//  if (is_1x1_) {
+//    col_buff = input;
+//  }
+//  for (int g = 0; g < group_; ++g) {
+//    caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, kernel_dim_,
+//        conv_out_spatial_dim_, conv_out_channels_ / group_,
+//        (Dtype)1., weights + weight_offset_ * g, output + output_offset_ * g,
+//        (Dtype)0., col_buff + col_offset_ * g);
+//  }
+//  if (!is_1x1_) {
+//    conv_col2im_gpu(col_buff, input);
+//  }
+//}
+//
+//template <typename Dtype>
+//void BaseAdaptiveConvolutionLayer<Dtype>::weight_gpu_gemm(const Dtype* input,
+//    const Dtype* output, Dtype* weights) {
+//  const Dtype* col_buff = input;
+//  if (!is_1x1_) {
+//    conv_im2col_gpu(input, col_buffer_.mutable_gpu_data());
+//    col_buff = col_buffer_.gpu_data();
+//  }
+//  for (int g = 0; g < group_; ++g) {
+//    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, conv_out_channels_ / group_,
+//        kernel_dim_, conv_out_spatial_dim_,
+//        (Dtype)1., output + output_offset_ * g, col_buff + col_offset_ * g,
+//        (Dtype)1., weights + weight_offset_ * g);
+//  }
+//}
+//
+//template <typename Dtype>
+//void BaseAdaptiveConvolutionLayer<Dtype>::backward_gpu_bias(Dtype* bias,
+//    const Dtype* input) {
+//  caffe_gpu_gemv<Dtype>(CblasNoTrans, num_output_, out_spatial_dim_, 1.,
+//      input, bias_multiplier_.gpu_data(), 1., bias);
+//}
 
 #endif  // !CPU_ONLY
 
-INSTANTIATE_CLASS(BaseConvolutionLayer);
+INSTANTIATE_CLASS(BaseAdaptiveConvolutionLayer);
 
 }  // namespace caffe
