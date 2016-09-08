@@ -8,6 +8,7 @@
 #include "caffe/layer.hpp"
 #include "caffe/layer_factory.hpp"
 #include "caffe/layers/conv_layer.hpp"
+#include "caffe/layers/adaptive_conv_layer.hpp"
 #include "caffe/layers/lrn_layer.hpp"
 #include "caffe/layers/pooling_layer.hpp"
 #include "caffe/layers/relu_layer.hpp"
@@ -71,6 +72,46 @@ shared_ptr<Layer<Dtype> > GetConvolutionLayer(
 }
 
 REGISTER_LAYER_CREATOR(Convolution, GetConvolutionLayer);
+
+
+// Get adaptive convolution layer according to engine.
+template <typename Dtype>
+shared_ptr<Layer<Dtype> > GetAdaptiveConvolutionLayer(
+    const LayerParameter& param) {
+  AdaptiveConvolutionParameter conv_param = param.adaptiveconvolution_param();
+  AdaptiveConvolutionParameter_Engine engine = conv_param.engine();
+#ifdef USE_CUDNN
+  bool use_dilation = false;
+  for (int i = 0; i < conv_param.dilation_size(); ++i) {
+    if (conv_param.dilation(i) > 1) {
+      use_dilation = true;
+    }
+  }
+#endif
+  if (engine == AdaptiveConvolutionParameter_Engine_DEFAULT) {
+    engine = AdaptiveConvolutionParameter_Engine_CAFFE;
+#ifdef USE_CUDNN
+    if (!use_dilation) {
+      engine = AdaptiveConvolutionParameter_Engine_CUDNN;
+    }
+#endif
+  }
+  if (engine == AdaptiveConvolutionParameter_Engine_CAFFE) {
+    return shared_ptr<Layer<Dtype> >(new AdaptiveConvolutionLayer<Dtype>(param));
+#ifdef USE_CUDNN
+  } else if (engine == AdaptiveConvolutionParameter_Engine_CUDNN) {
+    if (use_dilation) {
+      LOG(FATAL) << "CuDNN doesn't support the dilated convolution at Layer "
+                 << param.name();
+    }
+    return shared_ptr<Layer<Dtype> >(new CuDNNConvolutionLayer<Dtype>(param));
+#endif
+  } else {
+    LOG(FATAL) << "Layer " << param.name() << " has unknown engine.";
+  }
+}
+
+REGISTER_LAYER_CREATOR(AdaptiveConvolution, GetAdaptiveConvolutionLayer);
 
 // Get pooling layer according to engine.
 template <typename Dtype>

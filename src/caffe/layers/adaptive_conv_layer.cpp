@@ -1,11 +1,11 @@
 #include <vector>
 
-#include "caffe/layers/conv_layer.hpp"
+#include "caffe/layers/adaptive_conv_layer.hpp"
 
 namespace caffe {
 
 template <typename Dtype>
-void ConvolutionLayer<Dtype>::compute_output_shape() {
+void AdaptiveConvolutionLayer<Dtype>::compute_output_shape() {
   const int* kernel_shape_data = this->kernel_shape_.cpu_data();
   const int* stride_data = this->stride_.cpu_data();
   const int* pad_data = this->pad_.cpu_data();
@@ -22,7 +22,7 @@ void ConvolutionLayer<Dtype>::compute_output_shape() {
 }
 
 template <typename Dtype>
-void ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+void AdaptiveConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   const Dtype* weight = this->blobs_[0]->cpu_data();
   for (int i = 0; i < bottom.size(); ++i) {
@@ -40,7 +40,7 @@ void ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
+void AdaptiveConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   const Dtype* weight = this->blobs_[0]->cpu_data();
   Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
@@ -56,7 +56,7 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       }
     }
     if (this->param_propagate_down_[0] || propagate_down[i]) {
-      for (int n = 0; n < this->num_; ++n) {//channel number
+      for (int n = 0; n < this->num_; ++n) {
         // gradient w.r.t. weight. Note that we will accumulate diffs.
         if (this->param_propagate_down_[0]) {
           this->weight_cpu_gemm(bottom_data + n * this->bottom_dim_,
@@ -73,9 +73,9 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 }
 
 #ifdef CPU_ONLY
-STUB_GPU(ConvolutionLayer);
+STUB_GPU(AdaptiveConvolutionLayer);
 #endif
 
-INSTANTIATE_CLASS(ConvolutionLayer);
+INSTANTIATE_CLASS(AdaptiveConvolutionLayer);
 
 }  // namespace caffe
