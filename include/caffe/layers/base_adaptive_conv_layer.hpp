@@ -23,7 +23,6 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
       const vector<Blob<Dtype>*>& top);
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
-
   virtual inline int MinBottomBlobs() const { return 1; }
   virtual inline int MinTopBlobs() const { return 1; }
   virtual inline bool EqualNumBottomTopBlobs() const { return true; }
@@ -32,6 +31,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   // Helper functions that abstract away the column buffer and gemm arguments.
   // The last argument in forward_cpu_gemm is so that we can skip the im2col if
   // we just called weight_cpu_gemm with the same input.
+  void ReshapeFilterUpDown();
   void weights_pad_forward();
   void weights_cut_forward();
   void weights_pad_backward();

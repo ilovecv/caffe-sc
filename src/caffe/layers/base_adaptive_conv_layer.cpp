@@ -185,8 +185,58 @@ void BaseAdaptiveConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>&
   this->blobs_[2]->mutable_cpu_data()[0]=kernel_shape_data[0];
   kernel_dim_ = this->blobs_[0]->count(1);
   weight_offset_ = conv_out_channels_ * kernel_dim_ / group_;
+  ReshapeFilterUpDown();
   // Propagate gradients to the parameters (as directed by backward pass).
   this->param_propagate_down_.resize(this->blobs_.size(), true);
+}
+
+template <typename Dtype>
+void BaseAdaptiveConvolutionLayer<Dtype>::ReshapeFilterUpDown(){
+	  float kernel_size = this->blobs_[2]->cpu_data()[0];
+	  int* kernel_shape_data_up = kernel_shape_up_.mutable_cpu_data();
+	  int* kernel_shape_data_down = kernel_shape_down_.mutable_cpu_data();
+	    if (conv_param_.has_kernel_h() || conv_param_.has_kernel_w()) {
+	      CHECK_EQ(num_spatial_axes_, 2)
+	          << "kernel_h & kernel_w can only be used for 2D convolution.";
+	      CHECK_EQ(0, conv_param_.kernel_size_size())
+	          << "Either kernel_size or kernel_h/w should be specified; not both.";
+	      kernel_shape_data_up[0] = ceil(kernel_size/2)*2+1;
+	      kernel_shape_data_up[1] = ceil(kernel_size/2)*2+1;
+	      kernel_shape_data_down[0] = floor(kernel_size/2)*2+1;
+	      kernel_shape_data_down[1] = floor(kernel_size/2)*2+1;
+	    } else {
+	      const int num_kernel_dims = conv_param_.kernel_size_size();
+	      CHECK(num_kernel_dims == 1 || num_kernel_dims == num_spatial_axes_)
+	          << "kernel_size must be specified once, or once per spatial dimension "
+	          << "(kernel_size specified " << num_kernel_dims << " times; "
+	          << num_spatial_axes_ << " spatial dims).";
+	        for (int i = 0; i < num_spatial_axes_; ++i) {
+	          kernel_shape_data_up[i] =
+	              round(kernel_size)+2;
+	          kernel_shape_data_down[i] =
+	              round(kernel_size)-2;
+	        }
+	    }
+	    for (int i = 0; i < num_spatial_axes_; ++i) {
+	      CHECK_GT(kernel_shape_data_up[i], 0) << "Filter dimensions must be nonzero.";
+	      CHECK_GT(kernel_shape_data_down[i], 0) << "Filter dimensions must be nonzero.";
+	  }
+	  vector<int> weight_shape_up(2);
+	  vector<int> weight_shape_down(2);
+	  weight_shape_up[0] = conv_out_channels_;
+	  weight_shape_up[1] = conv_in_channels_ / group_;
+	  weight_shape_down[0] = conv_out_channels_;
+	  weight_shape_down[1] = conv_in_channels_ / group_;
+	  for (int i = 0; i < num_spatial_axes_; ++i) {
+	    weight_shape_up.push_back(kernel_shape_data_up[i]);
+	    weight_shape_down.push_back(kernel_shape_data_down[i]);
+	  }
+	  weight_filter_up_.Reshape(weight_shape_up);
+	  weight_filter_down_.Reshape(weight_shape_down);
+	  kernel_dim_up_ = weight_filter_up_.count(1);//conv_in_channels*k_h*k_w
+	  kernel_dim_down_ =weight_filter_down_.count(1);
+	  weight_offset_up_ = conv_out_channels_ * kernel_dim_up_ / group_;//conv_out_channels*conv_in_channels*k_h*k_w
+	  weight_offset_down_ = conv_out_channels_ * kernel_dim_down_ / group_;
 }
 
 template <typename Dtype>
@@ -205,51 +255,17 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
   }
   //create the weight_up and weight_down
   //in future, we can check whether it kernel size is changed
-  int* kernel_shape_data_up = kernel_shape_up_.mutable_cpu_data();
-  int* kernel_shape_data_down = kernel_shape_down_.mutable_cpu_data();
   float kernel_size = this->blobs_[2]->cpu_data()[0];
-    if (conv_param_.has_kernel_h() || conv_param_.has_kernel_w()) {
-      CHECK_EQ(num_spatial_axes_, 2)
-          << "kernel_h & kernel_w can only be used for 2D convolution.";
-      CHECK_EQ(0, conv_param_.kernel_size_size())
-          << "Either kernel_size or kernel_h/w should be specified; not both.";
-      kernel_shape_data_up[0] = round(kernel_size)+2;
-      kernel_shape_data_up[1] = round(kernel_size)+2;
-      kernel_shape_data_down[0] = round(kernel_size)-2;
-      kernel_shape_data_down[1] = round(kernel_size)-2;
-    } else {
-      const int num_kernel_dims = conv_param_.kernel_size_size();
-      CHECK(num_kernel_dims == 1 || num_kernel_dims == num_spatial_axes_)
-          << "kernel_size must be specified once, or once per spatial dimension "
-          << "(kernel_size specified " << num_kernel_dims << " times; "
-          << num_spatial_axes_ << " spatial dims).";
-        for (int i = 0; i < num_spatial_axes_; ++i) {
-          kernel_shape_data_up[i] =
-              round(kernel_size)+2;
-          kernel_shape_data_down[i] =
-              round(kernel_size)-2;
-        }
-    }
-    for (int i = 0; i < num_spatial_axes_; ++i) {
-      CHECK_GT(kernel_shape_data_up[i], 0) << "Filter dimensions must be nonzero.";
-      CHECK_GT(kernel_shape_data_down[i], 0) << "Filter dimensions must be nonzero.";
+  int ker_height_up = weight_filter_up_.height();
+  int ker_height_down = weight_filter_down_.height();
+  if(kernel_size>=ker_height_up){
+      this->blobs_[0]->CopyFrom(weight_filter_up_,true,true);
+      ReshapeFilterUpDown();
   }
-  vector<int> weight_shape_up(2);
-  vector<int> weight_shape_down(2);
-  weight_shape_up[0] = conv_out_channels_;
-  weight_shape_up[1] = conv_in_channels_ / group_;
-  weight_shape_down[0] = conv_out_channels_;
-  weight_shape_down[1] = conv_in_channels_ / group_;
-  for (int i = 0; i < num_spatial_axes_; ++i) {
-    weight_shape_up.push_back(kernel_shape_data_up[i]);
-    weight_shape_down.push_back(kernel_shape_data_down[i]);
+  if(kernel_size<ker_height_down){
+	  this->blobs_[0]->CopyFrom(weight_filter_down_,true,true);
+	  ReshapeFilterUpDown();
   }
-  weight_filter_up_.Reshape(weight_shape_up);
-  weight_filter_down_.Reshape(weight_shape_down);
-  kernel_dim_up_ = weight_filter_up_.count(1);//conv_in_channels*k_h*k_w
-  kernel_dim_down_ =weight_filter_down_.count(1);
-  weight_offset_up_ = conv_out_channels_ * kernel_dim_up_ / group_;//conv_out_channels*conv_in_channels*k_h*k_w
-  weight_offset_down_ = conv_out_channels_ * kernel_dim_down_ / group_;
   //Pad and cut the weight of up and down
   weights_pad_forward();
   weights_cut_forward();

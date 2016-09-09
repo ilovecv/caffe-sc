@@ -80,6 +80,8 @@ cmake_build
 .cmake_build
 
 # Generated documentation
+cmake/*
+docker/*
 docs/_site
 docs/gathered
 _site
