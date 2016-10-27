@@ -26,6 +26,8 @@ void im2col_cpu(const Dtype* data_im, const int channels,
     (dilation_h * (kernel_h - 1) + 1)) / stride_h + 1;
   const int output_w = (width + 2 * pad_w -
     (dilation_w * (kernel_w - 1) + 1)) / stride_w + 1;
+  //printf("output_h:%d,output_w:%d\n",output_h,output_w);
+  int i=0;
   const int channel_size = height * width;
   for (int channel = channels; channel--; data_im += channel_size) {
     for (int kernel_row = 0; kernel_row < kernel_h; kernel_row++) {
@@ -35,14 +37,20 @@ void im2col_cpu(const Dtype* data_im, const int channels,
           if (!is_a_ge_zero_and_a_lt_b(input_row, height)) {
             for (int output_cols = output_w; output_cols; output_cols--) {
               *(data_col++) = 0;
+              i++;
             }
           } else {
             int input_col = -pad_w + kernel_col * dilation_w;
             for (int output_col = output_w; output_col; output_col--) {
               if (is_a_ge_zero_and_a_lt_b(input_col, width)) {
                 *(data_col++) = data_im[input_row * width + input_col];
+                if(i%(output_h*output_w)==0)
+                //printf("%d:%d:%f ",i,input_row * width + input_col,data_im[input_row * width + input_col]);
+                //printf("%f ",data_im[input_row * width + input_col]);
+                i++;
               } else {
                 *(data_col++) = 0;
+                i++;
               }
               input_col += stride_w;
             }
@@ -52,6 +60,7 @@ void im2col_cpu(const Dtype* data_im, const int channels,
       }
     }
   }
+  //printf("\n");
 }
 
 // Explicit instantiation
@@ -281,6 +290,7 @@ void col2im_plus_cpu(const Dtype* data_col, const int channels,
     (dilation_h * (kernel_h - 1) + 1)) / stride_h + 1;
   const int output_w = (width + 2 * pad_w -
     (dilation_w * (kernel_w - 1) + 1)) / stride_w + 1;
+ // printf("output_h:%d,output_w:%d\n",output_h,output_w);
   const int channel_size = height * width;
   for (int channel = channels; channel--; data_im += channel_size) {
     for (int kernel_row = 0; kernel_row < kernel_h; kernel_row++) {

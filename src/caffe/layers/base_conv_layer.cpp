@@ -269,6 +269,8 @@ void BaseConvolutionLayer<Dtype>::forward_cpu_gemm(const Dtype* input,
         (Dtype)1., weights + weight_offset_ * g, col_buff + col_offset_ * g,
         (Dtype)0., output + output_offset_ * g);
   }
+  printf("input:");for(int i =200; i< 210; i++) printf("%f ", input[i]);printf("\n");
+  printf("output:");for(int i =200; i< 210; i++) printf("%f ", output[i]);printf("\n");
 }
 
 template <typename Dtype>
@@ -305,12 +307,14 @@ void BaseConvolutionLayer<Dtype>::weight_cpu_gemm(const Dtype* input,
     conv_im2col_cpu(input, col_buffer_.mutable_cpu_data());
     col_buff = col_buffer_.cpu_data();
   }
+  printf("weightin:");for(int i =0; i< 10; i++) printf("%e ", weights[i]);printf("\n");
   for (int g = 0; g < group_; ++g) {
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, conv_out_channels_ / group_,
         kernel_dim_, conv_out_spatial_dim_,
         (Dtype)1., output + output_offset_ * g, col_buff + col_offset_ * g,
         (Dtype)1., weights + weight_offset_ * g);
   }
+  printf("weightout:");for(int i =0; i< 10; i++) printf("%e ", weights[i]);printf("\n");
 }
 
 template <typename Dtype>

@@ -56,7 +56,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   void weight_gpu_gemm(const Dtype* col_input, const Dtype* output, Dtype*
       weights);
   void backward_cpu_kernel_size(const Dtype* output_diff,const Dtype* input,
-		    const Dtype* weights, Dtype* output, bool skip_im2col);
+		    const Dtype* weights, Dtype* kernel_size_diff);
   void backward_gpu_bias(Dtype* bias, const Dtype* input);
 #endif
 
@@ -97,9 +97,16 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int channels_;
   int group_;
   int out_spatial_dim_;
+  int init_kernel_width_;
+  int init_kernel_height_;
   int weight_offset_;
+  int weight_offset_c_;
   int weight_offset_up_;
+  int weight_offset_up_c_;
   int weight_offset_down_;
+  int weight_offset_down_c_;
+  int pad_offset_up_;
+  int pad_offset_down_;
   int num_output_;
   bool bias_term_;
   bool is_1x1_;
@@ -110,58 +117,62 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
   inline void conv_im2col_up_cpu(const Dtype* data, Dtype* col_buff) {
     if (!force_nd_im2col_ && num_spatial_axes_ == 2) {
+    	//printf("up:\n");
       im2col_cpu(data, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_up_.cpu_data()[0], kernel_shape_up_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_up_, pad_.cpu_data()[1]+pad_offset_up_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
           dilation_.cpu_data()[0], dilation_.cpu_data()[1], col_buff);
     } else {
       im2col_nd_cpu(data, num_spatial_axes_, conv_input_shape_.cpu_data(),
           col_buffer_shape_up_.data(), kernel_shape_up_.cpu_data(),
-          pad_.cpu_data(), stride_.cpu_data(), dilation_.cpu_data(), col_buff);
+          pad_.cpu_data()+pad_offset_up_, stride_.cpu_data(), dilation_.cpu_data(), col_buff);
     }
   }
   inline void conv_im2col_down_cpu(const Dtype* data, Dtype* col_buff) {
     if (!force_nd_im2col_ && num_spatial_axes_ == 2) {
+    	//printf("down:\n");
       im2col_cpu(data, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_down_.cpu_data()[0], kernel_shape_down_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_down_, pad_.cpu_data()[1]+pad_offset_down_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
           dilation_.cpu_data()[0], dilation_.cpu_data()[1], col_buff);
     } else {
       im2col_nd_cpu(data, num_spatial_axes_, conv_input_shape_.cpu_data(),
           col_buffer_shape_down_.data(), kernel_shape_down_.cpu_data(),
-          pad_.cpu_data(), stride_.cpu_data(), dilation_.cpu_data(), col_buff);
+          pad_.cpu_data()+pad_offset_down_, stride_.cpu_data(), dilation_.cpu_data(), col_buff);
     }
   }
   inline void conv_col2im_up_cpu(const Dtype* col_buff, float alpha, float beta, Dtype* data) {
     if (!force_nd_im2col_ && num_spatial_axes_ == 2) {
+    	printf("backward up:\n");
       col2im_plus_cpu(col_buff, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_up_.cpu_data()[0], kernel_shape_up_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_up_, pad_.cpu_data()[1]+pad_offset_up_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
           dilation_.cpu_data()[0], dilation_.cpu_data()[1], alpha, beta, data);
     } else {
       col2im_nd_plus_cpu(col_buff, num_spatial_axes_, conv_input_shape_.cpu_data(),
           col_buffer_shape_up_.data(), kernel_shape_up_.cpu_data(),
-          pad_.cpu_data(), stride_.cpu_data(), dilation_.cpu_data(), alpha, beta, data);
+          pad_.cpu_data()+pad_offset_up_, stride_.cpu_data(), dilation_.cpu_data(), alpha, beta, data);
     }
   }
   inline void conv_col2im_down_cpu(const Dtype* col_buff,float alpha, float beta, Dtype* data) {
     if (!force_nd_im2col_ && num_spatial_axes_ == 2) {
+    	printf("backward down:\n");
       col2im_plus_cpu(col_buff, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_down_.cpu_data()[0], kernel_shape_down_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_down_, pad_.cpu_data()[1]+pad_offset_down_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
           dilation_.cpu_data()[0], dilation_.cpu_data()[1],alpha, beta, data);
     } else {
       col2im_nd_plus_cpu(col_buff, num_spatial_axes_, conv_input_shape_.cpu_data(),
           col_buffer_shape_down_.data(), kernel_shape_down_.cpu_data(),
-          pad_.cpu_data(), stride_.cpu_data(), dilation_.cpu_data(),alpha, beta, data);
+          pad_.cpu_data()+pad_offset_down_, stride_.cpu_data(), dilation_.cpu_data(),alpha, beta, data);
     }
   }
 #ifndef CPU_ONLY
@@ -238,10 +249,13 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int col_offset_up_;
   int col_offset_down_;
   int output_offset_;
+  int output_offset_c_;
+  int iter_;
 
   ConvolutionParameter conv_param_;
   Blob<Dtype> col_buffer_up_;
   Blob<Dtype> col_buffer_down_;
+  Blob<Dtype> kernel_diff_buffer_;
   Blob<Dtype> weight_filter_up_;
   Blob<Dtype> weight_filter_down_;
   Blob<Dtype> bias_multiplier_;
