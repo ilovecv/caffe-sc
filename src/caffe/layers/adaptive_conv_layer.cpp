@@ -75,7 +75,7 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
         }
       }
       //kernel_size_diff[0]=kernel_size_diff[0]/this->num_;
-      printf("kernel_dadta:%f, kernel_diff:%f\n",this->blobs_[2]->cpu_data()[0],kernel_size_diff[0]);
+      printf("kernel_data:%f, kernel_diff:%f\n",this->blobs_[2]->cpu_data()[0],kernel_size_diff[0]);
     }
   }
 }

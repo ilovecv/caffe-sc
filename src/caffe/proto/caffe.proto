@@ -636,6 +636,7 @@ message AdaptiveConvolutionParameter {
   optional uint32 kernel_w = 12; // The kernel width (2D only)
   optional uint32 stride_h = 13; // The stride height (2D only)
   optional uint32 stride_w = 14; // The stride width (2D only)
+  optional uint32 max_kernel_size = 19 [default = 9];
 
   optional uint32 group = 5 [default = 1]; // The group size for group conv
 

@@ -36,8 +36,10 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   void weights_cut_forward();
   void weights_pad_backward();
   void weights_cut_backward();
-  void weight_add_updown(const Dtype* weight_diff_up, float ratio_up,
+  void weight_add_updown_cpu(const Dtype* weight_diff_up, float ratio_up,
 		    const Dtype* weight_diff_down, float ratio_down, int length, Dtype* weights_diff);
+  void weight_add_updown_gpu(const Dtype* weight_diff_up, float ratio_up,
+  		    const Dtype* weight_diff_down, float ratio_down, int length, Dtype* weights_diff);
   void forward_cpu_gemm(const Dtype* input, const Dtype* weights,
       Dtype* output, bool skip_im2col = false);
   void forward_cpu_bias(Dtype* output, const Dtype* bias);
@@ -45,6 +47,8 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
       Dtype* output);
   void weight_cpu_gemm(const Dtype* input, const Dtype* output, Dtype*
       weights);
+  void backward_cpu_kernel_size(const Dtype* output_diff,const Dtype* input,
+       const Dtype* weights, Dtype* kernel_size_diff);
   void backward_cpu_bias(Dtype* bias, const Dtype* input);
 
 #ifndef CPU_ONLY
@@ -55,8 +59,8 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
       Dtype* col_output);
   void weight_gpu_gemm(const Dtype* col_input, const Dtype* output, Dtype*
       weights);
-  void backward_cpu_kernel_size(const Dtype* output_diff,const Dtype* input,
-		    const Dtype* weights, Dtype* kernel_size_diff);
+  void backward_gpu_kernel_size(const Dtype* output_diff,const Dtype* input,
+		  const Dtype* weights, Dtype* kernel_size_diff);
   void backward_gpu_bias(Dtype* bias, const Dtype* input);
 #endif
 
@@ -74,6 +78,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<int> kernel_shape_up_;
   Blob<int> kernel_shape_down_;
   Blob<int> kernel_shape_;
+  Blob<int> kernel_shape_max_;
   /// @brief The spatial dimensions of the stride.
   Blob<int> stride_;
   /// @brief The spatial dimensions of the padding.
@@ -100,11 +105,8 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int init_kernel_width_;
   int init_kernel_height_;
   int weight_offset_;
-  int weight_offset_c_;
   int weight_offset_up_;
-  int weight_offset_up_c_;
   int weight_offset_down_;
-  int weight_offset_down_c_;
   int pad_offset_up_;
   int pad_offset_down_;
   int num_output_;
@@ -181,13 +183,13 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
       im2col_gpu(data, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_up_.cpu_data()[0], kernel_shape_up_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_up_, pad_.cpu_data()[1]+pad_offset_up_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
           dilation_.cpu_data()[0], dilation_.cpu_data()[1], col_buff);
     } else {
       im2col_nd_gpu(data, num_spatial_axes_, num_kernels_im2col_,
           conv_input_shape_.gpu_data(), col_buffer_up_.gpu_shape(),
-          kernel_shape_up_.gpu_data(), pad_.gpu_data(),
+          kernel_shape_up_.gpu_data(), pad_.gpu_data()+pad_offset_up_,
           stride_.gpu_data(), dilation_.gpu_data(), col_buff);
     }
   }
@@ -196,44 +198,44 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
       im2col_gpu(data, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_down_.cpu_data()[0], kernel_shape_down_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_down_, pad_.cpu_data()[1]+pad_offset_down_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
           dilation_.cpu_data()[0], dilation_.cpu_data()[1], col_buff);
     } else {
       im2col_nd_gpu(data, num_spatial_axes_, num_kernels_im2col_,
           conv_input_shape_.gpu_data(), col_buffer_down_.gpu_shape(),
-          kernel_shape_down_.gpu_data(), pad_.gpu_data(),
+          kernel_shape_down_.gpu_data(), pad_.gpu_data()+pad_offset_down_,
           stride_.gpu_data(), dilation_.gpu_data(), col_buff);
     }
   }
-  inline void conv_col2im_up_gpu(const Dtype* col_buff, Dtype* data) {
+  inline void conv_col2im_up_gpu(const Dtype* col_buff,float alpha, float beta, Dtype* data) {
     if (!force_nd_im2col_ && num_spatial_axes_ == 2) {
-      col2im_gpu(col_buff, conv_in_channels_,
+      col2im_plus_gpu(col_buff, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_up_.cpu_data()[0], kernel_shape_up_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_up_, pad_.cpu_data()[1]+pad_offset_up_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
-          dilation_.cpu_data()[0], dilation_.cpu_data()[1], data);
+          dilation_.cpu_data()[0], dilation_.cpu_data()[1],alpha, beta, data);
     } else {
-      col2im_nd_gpu(col_buff, num_spatial_axes_, num_kernels_col2im_,
+      col2im_nd_plus_gpu(col_buff, num_spatial_axes_, num_kernels_col2im_,
           conv_input_shape_.gpu_data(), col_buffer_up_.gpu_shape(),
-          kernel_shape_up_.gpu_data(), pad_.gpu_data(), stride_.gpu_data(),
-          dilation_.gpu_data(), data);
+          kernel_shape_up_.gpu_data(), pad_.gpu_data()+pad_offset_up_, stride_.gpu_data(),
+          dilation_.gpu_data(),alpha, beta, data);
     }
   }
-  inline void conv_col2im_down_gpu(const Dtype* col_buff, Dtype* data) {
+  inline void conv_col2im_down_gpu(const Dtype* col_buff,float alpha, float beta, Dtype* data) {
     if (!force_nd_im2col_ && num_spatial_axes_ == 2) {
-      col2im_gpu(col_buff, conv_in_channels_,
+      col2im_plus_gpu(col_buff, conv_in_channels_,
           conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
           kernel_shape_down_.cpu_data()[0], kernel_shape_down_.cpu_data()[1],
-          pad_.cpu_data()[0], pad_.cpu_data()[1],
+          pad_.cpu_data()[0]+pad_offset_down_, pad_.cpu_data()[1]+pad_offset_down_,
           stride_.cpu_data()[0], stride_.cpu_data()[1],
-          dilation_.cpu_data()[0], dilation_.cpu_data()[1], data);
+          dilation_.cpu_data()[0], dilation_.cpu_data()[1],alpha, beta, data);
     } else {
-      col2im_nd_gpu(col_buff, num_spatial_axes_, num_kernels_col2im_,
+      col2im_nd_plus_gpu(col_buff, num_spatial_axes_, num_kernels_col2im_,
           conv_input_shape_.gpu_data(), col_buffer_down_.gpu_shape(),
-          kernel_shape_down_.gpu_data(), pad_.gpu_data(), stride_.gpu_data(),
-          dilation_.gpu_data(), data);
+          kernel_shape_down_.gpu_data(), pad_.gpu_data()+pad_offset_down_, stride_.gpu_data(),
+          dilation_.gpu_data(),alpha, beta, data);
     }
   }
 #endif
@@ -249,10 +251,9 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int col_offset_up_;
   int col_offset_down_;
   int output_offset_;
-  int output_offset_c_;
   int iter_;
 
-  ConvolutionParameter conv_param_;
+  AdaptiveConvolutionParameter conv_param_;
   Blob<Dtype> col_buffer_up_;
   Blob<Dtype> col_buffer_down_;
   Blob<Dtype> kernel_diff_buffer_;
