@@ -60,9 +60,10 @@ void AccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         continue;
       }
       DCHECK_GE(label_value, 0);
-      DCHECK_LT(label_value, num_labels);
+      //printf("label_value=%d,num_labels=%d\n",label_value,num_labels);
+      //DCHECK_LT(label_value, num_labels);
       float score=bottom_data[i * inner_num_ + j];
-      if(score>0.5)
+      if(score>0)
     	  predlabel=1;
       else predlabel=0;
       if(predlabel==label_value) ++accuracy;

@@ -53,6 +53,9 @@ void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       }
     }
   }
+  //const Dtype* weight_diff1=this->blobs_[0]->cpu_diff();
+  //printf("begin_reshape\n");
+  //for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%.4e ",weight_diff1[j*9+k]);} printf("\n");}
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(ConvolutionLayer);

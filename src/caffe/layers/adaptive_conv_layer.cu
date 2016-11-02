@@ -55,7 +55,7 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& t
               bottom_diff + n * this->bottom_dim_);
         }
       }
-      printf("kernel_data:%f, kernel_diff:%f\n",this->blobs_[2]->cpu_data()[0],kernel_size_diff[0]);
+     printf("kernel_data:%f, kernel_diff:%f\n",this->blobs_[2]->cpu_data()[0],kernel_size_diff[0]);
     }
   }
 }

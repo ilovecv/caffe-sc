@@ -6,7 +6,7 @@ namespace caffe {
 
 template <typename Dtype>
 void AdaptiveConvolutionLayer<Dtype>::compute_output_shape() {
-  const int* kernel_shape_data = this->kernel_shape_.cpu_data();
+  const int* kernel_shape_data = this->kernel_shape_max_.cpu_data();
   const int* stride_data = this->stride_.cpu_data();
   const int* pad_data = this->pad_.cpu_data();
   const int* dilation_data = this->dilation_.cpu_data();
@@ -75,9 +75,12 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
         }
       }
       //kernel_size_diff[0]=kernel_size_diff[0]/this->num_;
-      printf("kernel_data:%f, kernel_diff:%f\n",this->blobs_[2]->cpu_data()[0],kernel_size_diff[0]);
+      //printf("kernel_data:%f, kernel_diff:%f\n",this->blobs_[2]->cpu_data()[0],kernel_size_diff[0]);
     }
   }
+  //printf("End of backward\n");
+  //for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%.4e ",weight_diff[j*9+k]);} printf("\n");}
+
 }
 
 #ifdef CPU_ONLY
