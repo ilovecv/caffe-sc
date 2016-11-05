@@ -23,6 +23,42 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Reshape(
   CHECK_EQ(bottom[0]->count(), bottom[1]->count()) <<
       "SIGMOID_CROSS_ENTROPY_LOSS layer inputs must have the same count.";
   sigmoid_layer_->Reshape(sigmoid_bottom_vec_, sigmoid_top_vec_);
+  int bottom_channels_ = bottom[0]->channels();
+  const int count = bottom[0]->count();
+  const int num = bottom[0]->num();
+  weight_vec_.Reshape(1,1,1,bottom_channels_);
+  weight_rep_vec_.Reshape(bottom[0]->shape());
+  Dtype* weight = weight_vec_.mutable_cpu_data();
+  Dtype* weight_rep=weight_rep_vec_.mutable_cpu_data();
+  caffe_set(bottom_channels_, Dtype(0), weight);
+  const Dtype* target = bottom[1]->cpu_data();
+  for (int i =0; i <num; i++){
+	  for (int j=0; j<bottom_channels_; j++){
+		  weight[j]+=target[i*bottom_channels_+j];
+	  }
+  }
+  //printf("num=%d, bottom_channels=%d, count=%d\n",num, bottom_channels, count);
+  //printf("weight:");
+  for(int j=0; j<bottom_channels_; j++){
+	  weight[j]=weight[j]/(num-weight[j]);
+  }
+  for(int j=0; j<count; j++){
+	  if(target[j]==1){
+		  weight_rep[j]=1;
+	  }
+	  else{
+		  weight_rep[j]=weight[j%bottom_channels_];
+	  }
+  }
+  //for(int j=0; j<bottom_channels_*2;j++){
+ 	//  printf("%f ", target[j]);
+   //}
+   //printf("\n");
+  //for(int j=0; j<bottom_channels_*2;j++){
+	//  printf("%f ", weight_rep[j]);
+  //}
+  //printf("\n");
+
 }
 
 template <typename Dtype>
@@ -37,6 +73,7 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
   // Stable version of loss computation from input data
   const Dtype* input_data = bottom[0]->cpu_data();
   const Dtype* target = bottom[1]->cpu_data();
+  //const Dtype* weight = weight_vec_.cpu_data();
   Dtype loss = 0;
   for (int i = 0; i < count; ++i) {
     loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
@@ -59,8 +96,10 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_cpu(
     const int num = bottom[0]->num();
     const Dtype* sigmoid_output_data = sigmoid_output_->cpu_data();
     const Dtype* target = bottom[1]->cpu_data();
+    const Dtype* weight_rep=weight_rep_vec_.cpu_data();
     Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
     caffe_sub(count, sigmoid_output_data, target, bottom_diff);
+    caffe_mul(count, weight_rep, bottom_diff, bottom_diff);
     // Scale down gradient
     const Dtype loss_weight = top[0]->cpu_diff()[0];
     caffe_scal(count, loss_weight / num, bottom_diff);

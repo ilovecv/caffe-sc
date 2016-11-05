@@ -103,6 +103,10 @@ class SigmoidCrossEntropyLossLayer : public LossLayer<Dtype> {
   vector<Blob<Dtype>*> sigmoid_bottom_vec_;
   /// top vector holder to call the underlying SigmoidLayer::Forward
   vector<Blob<Dtype>*> sigmoid_top_vec_;
+  int bottom_channels_;
+
+  Blob<Dtype> weight_vec_;
+  Blob<Dtype> weight_rep_vec_;
 };
 
 }  // namespace caffe

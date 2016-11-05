@@ -178,6 +178,11 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   }
   kernel_dim_ = this->blobs_[0]->count(1);
   weight_offset_ = conv_out_channels_ * kernel_dim_ / group_;
+  weight_channel_offset_=kernel_dim_/group_;
+  vector<int> test_multiplier_shape(1, weight_channel_offset_);
+  test_multiplier_.Reshape(test_multiplier_shape);
+  caffe_set(test_multiplier_.count(), Dtype(1),
+            test_multiplier_.mutable_cpu_data());
   // Propagate gradients to the parameters (as directed by backward pass).
   this->param_propagate_down_.resize(this->blobs_.size(), true);
 }

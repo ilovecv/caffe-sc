@@ -27,8 +27,7 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& t
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   const Dtype* weight = this->blobs_[0]->gpu_data();
   Dtype* weight_diff = this->blobs_[0]->mutable_gpu_diff();
-  Dtype* kernel_size_diff = this->blobs_[2]->mutable_cpu_diff();
-  kernel_size_diff[0]=0.0;
+  Dtype* kernel_size_diff = this->blobs_[2]->mutable_gpu_diff();
   for (int i = 0; i < top.size(); ++i) {
     const Dtype* top_diff = top[i]->gpu_diff();
     // Bias gradient, if necessary.
@@ -54,9 +53,19 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& t
           this->backward_gpu_gemm(top_diff + n * this->top_dim_, weight,
               bottom_diff + n * this->bottom_dim_);
         }
-      }
-     printf("kernel_data:%f, kernel_diff:%f\n",this->blobs_[2]->cpu_data()[0],kernel_size_diff[0]);
+      }////
     }
+  }
+  if(this->Debug_){
+  printf("Kernel difference:");
+  for(int i=0; i<this->num_output_; i++)
+  printf("%d:%.4f ",i+1,this->blobs_[2]->cpu_diff()[i]);
+  printf("\n");
+  printf("weight diff:\n");
+  const Dtype* weightcpu = this->blobs_[0]->cpu_diff();
+  for(int i=0; i<this->num_output_; i++){
+	  printf("%d:%f ",i+1,caffe_cpu_dot(this->weight_channel_offset_,this->test_multiplier_.cpu_data(),weightcpu+i*this->weight_channel_offset_));
+  }
   }
 }
 

@@ -32,7 +32,9 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   // The last argument in forward_cpu_gemm is so that we can skip the im2col if
   // we just called weight_cpu_gemm with the same input.
   void ReshapeFilterUpDown();
-  void weights_padcut_forward();
+  void weights_updown_forward();
+  void weights_cut(int weight_channel_offset_,int kernel_int_size,Dtype *weight);
+  void weights_pad(int weight_channel_offset_,int kernel_int_size,Dtype *weight);
   void forward_cpu_gemm(const Dtype* input, const Dtype* weights,
       Dtype* output, bool skip_im2col = false);
   void forward_cpu_bias(Dtype* output, const Dtype* bias);
@@ -97,11 +99,13 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int init_kernel_width_;
   int init_kernel_height_;
   int weight_offset_;
+  int weight_channel_offset_;
   int num_output_;
   bool bias_term_;
   bool is_1x1_;
   bool force_nd_im2col_;
-
+  bool Debug_;
+  Blob<Dtype> test_multiplier_;
 
  private:
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
@@ -171,8 +175,6 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int conv_out_channels_;
   int conv_in_channels_;
   int conv_out_spatial_dim_;
-  float up_ratio_;
-  float down_ratio_;
   int kernel_dim_;
   int col_offset_;
   int output_offset_;
@@ -183,8 +185,11 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<Dtype> kernel_diff_buffer_;
   Blob<Dtype> weight_filter_up_;
   Blob<Dtype> weight_filter_down_;
+  Blob<Dtype> weight_ratio_up_;
+  Blob<Dtype> weight_ratio_down_;
+  Blob<Dtype> weight_multiplier_;
+  Blob<Dtype> output_multiplier_;
   Blob<Dtype> bias_multiplier_;
-  Blob<Dtype> kernel_size_multiplier_;
 
 };
 

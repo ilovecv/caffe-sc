@@ -45,7 +45,7 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
   const Dtype* weight = this->blobs_[0]->cpu_data();
   Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
   Dtype* kernel_size_diff = this->blobs_[2]->mutable_cpu_diff();
-  kernel_size_diff[0]=0.0;
+  //kernel_size_diff[0]=0.0;
   //printf("topsize:%d\n",top.size());
   for (int i = 0; i < top.size(); ++i) {
     const Dtype* top_diff = top[i]->cpu_diff();
