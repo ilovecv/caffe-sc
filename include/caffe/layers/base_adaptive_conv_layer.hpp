@@ -105,7 +105,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   bool is_1x1_;
   bool force_nd_im2col_;
   bool Debug_;
-  Blob<Dtype> test_multiplier_;
+  Blob<Dtype> weightone_multiplier_;
 
  private:
   // wrap im2col/col2im so we don't have to remember the (long) argument lists

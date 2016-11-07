@@ -64,7 +64,7 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& t
   printf("weight diff:\n");
   const Dtype* weightcpu = this->blobs_[0]->cpu_diff();
   for(int i=0; i<this->num_output_; i++){
-	  printf("%d:%f ",i+1,caffe_cpu_dot(this->weight_channel_offset_,this->test_multiplier_.cpu_data(),weightcpu+i*this->weight_channel_offset_));
+	  printf("%d:%f ",i+1,caffe_cpu_dot(this->weight_channel_offset_,this->weightone_multiplier_.cpu_data(),weightcpu+i*this->weight_channel_offset_));
   }
   }
 }
