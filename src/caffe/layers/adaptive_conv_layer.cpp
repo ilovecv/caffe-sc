@@ -24,12 +24,13 @@ void AdaptiveConvolutionLayer<Dtype>::compute_output_shape() {
 template <typename Dtype>
 void AdaptiveConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-  const Dtype* weight = this->blobs_[0]->cpu_data();
+  const Dtype* weights_up = this->blobs_[0]->cpu_data();
+  const Dtype* weights_down = this->blobs_[1]->cpu_data();
   for (int i = 0; i < bottom.size(); ++i) {
     const Dtype* bottom_data = bottom[i]->cpu_data();
     Dtype* top_data = top[i]->mutable_cpu_data();
     for (int n = 0; n < this->num_; ++n) {
-      this->forward_cpu_gemm(bottom_data + n * this->bottom_dim_, weight,
+      this->forward_cpu_gemm(bottom_data + n * this->bottom_dim_, weights_up, weights_down,
           top_data + n * this->top_dim_);
       if (this->bias_term_) {
         const Dtype* bias = this->blobs_[1]->cpu_data();
@@ -42,9 +43,11 @@ void AdaptiveConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
 template <typename Dtype>
 void AdaptiveConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  const Dtype* weight = this->blobs_[0]->cpu_data();
-  Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
-  Dtype* kernel_size_diff = this->blobs_[2]->mutable_cpu_diff();
+  const Dtype* weights_up = this->blobs_[0]->cpu_data();
+  const Dtype* weights_down = this->blobs_[1]->cpu_data();
+  Dtype* weight_diff_up = this->blobs_[0]->mutable_cpu_diff();
+  Dtype* weight_diff_down = this->blobs_[1]->mutable_cpu_diff();
+  Dtype* kernel_size_diff = this->blobs_[3]->mutable_cpu_data();
   //kernel_size_diff[0]=0.0;
   //printf("topsize:%d\n",top.size());
   for (int i = 0; i < top.size(); ++i) {
@@ -53,7 +56,7 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
     Dtype* bottom_diff = bottom[i]->mutable_cpu_diff();
     // Bias gradient, if necessary.
     if (this->bias_term_ && this->param_propagate_down_[1]) {
-      Dtype* bias_diff = this->blobs_[1]->mutable_cpu_diff();
+      Dtype* bias_diff = this->blobs_[2]->mutable_cpu_diff();
       for (int n = 0; n < this->num_; ++n) {
         this->backward_cpu_bias(bias_diff, top_diff + n * this->top_dim_);
       }
@@ -64,13 +67,13 @@ void AdaptiveConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& t
         // gradient w.r.t. weight. Note that we will accumulate diffs.
         if (this->param_propagate_down_[0]) {
           this->weight_cpu_gemm(bottom_data + n * this->bottom_dim_,
-              top_diff + n * this->top_dim_, weight_diff);
+              top_diff + n * this->top_dim_, weight_diff_up,weight_diff_down);
           this->backward_cpu_kernel_size(top_diff+n*this->top_dim_, bottom_data + n*this->bottom_dim_,
-          	    weight, kernel_size_diff);
+          	    weights_up,weights_down, kernel_size_diff);
         }
         // gradient w.r.t. bottom data, if necessary.
         if (propagate_down[i]) {
-          this->backward_cpu_gemm(top_diff + n * this->top_dim_, weight,
+          this->backward_cpu_gemm(top_diff + n * this->top_dim_, weights_up, weights_down,
               bottom_diff + n * this->bottom_dim_);
         }
       }

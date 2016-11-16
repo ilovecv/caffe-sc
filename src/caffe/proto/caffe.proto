@@ -33,7 +33,7 @@ message Datum {
   optional int32 width = 3;
   // the actual image data, in bytes
   optional bytes data = 4;
-  optional int32 label = 5;
+  repeated int32 label = 5;
   // Optionally, the datum could also hold float data.
   repeated float float_data = 6;
   // If true data contains an encoded image that need to be decoded
@@ -419,6 +419,8 @@ message TransformationParameter {
   optional bool mirror = 2 [default = false];
   // Specify if we would like to randomly crop an image.
   optional uint32 crop_size = 3 [default = 0];
+  optional uint32 crop_height = 11 [default = 0];
+  optional uint32 crop_width = 12 [default = 0];
   // mean_file and mean_value cannot be specified at the same time
   optional string mean_file = 4;
   // if specified can be repeated once (would substract it from all the channels)
@@ -429,6 +431,12 @@ message TransformationParameter {
   optional bool force_color = 6 [default = false];
   // Force the decoded image to have 1 color channels.
   optional bool force_gray = 7 [default = false];
+  // indicate if the input image is gray level
+  optional bool is_color = 8 [default = false];
+  // Specify if we would like to rotate an image. 
+  optional uint32 rotation = 9 [default = 0]; 
+  // Specify if we would like to randomly or sharply rotate an image.
+  optional bool fixed = 10 [default = false];
 }
 
 // Message that stores parameters shared by loss layers
@@ -719,6 +727,7 @@ message DataParameter {
   // Prefetch queue (Number of batches to prefetch to host memory, increase if
   // data access bandwidth varies).
   optional uint32 prefetch = 10 [default = 4];
+  optional uint32 label_dim = 11 [default = 1];
 }
 
 message DropoutParameter {
@@ -859,6 +868,16 @@ message ImageDataParameter {
   // data.
   optional bool mirror = 6 [default = false];
   optional string root_folder = 12 [default = ""];
+  // Specify the image num.  
+  optional uint32 image_num = 13 [default = 1];
+  // Specify the label num.
+  optional uint32 label_dim = 14 [default = 1];  
+  // If we balance pos and neg samples in training batches  
+  optional bool balance = 15 [default = false];
+  // Balance for which axis 
+  optional uint32 balance_axis = 16 [default = 0]; 
+  // Coeff for balancing data (for positive)  
+  optional float balance_coeff = 17 [default = 0.5];
 }
 
 message InfogainLossParameter {

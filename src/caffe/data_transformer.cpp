@@ -1,5 +1,10 @@
 #ifdef USE_OPENCV
 #include <opencv2/core/core.hpp>
+#include <opencv2/core/core_c.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui/highgui_c.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/imgproc/imgproc_c.h>
 #endif  // USE_OPENCV
 
 #include <string>
@@ -226,6 +231,8 @@ template<typename Dtype>
 void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
                                        Blob<Dtype>* transformed_blob) {
   const int crop_size = param_.crop_size();
+  const int crop_height = param_.crop_height();
+  const int crop_width = param_.crop_width();
   const int img_channels = cv_img.channels();
   const int img_height = cv_img.rows;
   const int img_width = cv_img.cols;
@@ -244,13 +251,27 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   CHECK(cv_img.depth() == CV_8U) << "Image data type must be unsigned byte";
 
   const Dtype scale = param_.scale();
-  const bool do_mirror = param_.mirror() && Rand(2);
+  const int rotation = param_.rotation();
+  const bool fixed = param_.fixed();
+  bool do_mirror = param_.mirror() && Rand(2);
   const bool has_mean_file = param_.has_mean_file();
+  const bool is_color = param_.is_color();
   const bool has_mean_values = mean_values_.size() > 0;
+  int channel_offset = 0;
+  if (is_color)
+	  channel_offset = 3;
+  else
+	  channel_offset = 1;
+  std::vector<bool> do_mirrors;
+  for(int c=0;c<img_channels;c += channel_offset){
+	  do_mirrors.push_back(do_mirror && Rand(2));
+  }
 
   CHECK_GT(img_channels, 0);
   CHECK_GE(img_height, crop_size);
   CHECK_GE(img_width, crop_size);
+  CHECK_GE(img_height, crop_height);
+  CHECK_GE(img_width, crop_width);
 
   Dtype* mean = NULL;
   if (has_mean_file) {
@@ -264,7 +285,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
      "Specify either 1 mean_value or as many as channels: " << img_channels;
     if (img_channels > 1 && mean_values_.size() == 1) {
       // Replicate the mean_value for simplicity
-      for (int c = 1; c < img_channels; ++c) {
+      for (int c = 1; c < img_channels; c+=channel_offset) {
         mean_values_.push_back(mean_values_[0]);
       }
     }
@@ -273,19 +294,54 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   int h_off = 0;
   int w_off = 0;
   cv::Mat cv_cropped_img = cv_img;
-  if (crop_size) {
+  cv::Mat temp_img = cv_img;
+  cv::Mat temp_channels[img_channels];
+  cv::split(cv_img,temp_channels);
+  std::vector<cv::Mat> cropped_channels;
+  if (crop_height && crop_width) {
+      CHECK_EQ(crop_height, height);
+      CHECK_EQ(crop_width, width);
+      //LOG(INFO) << "Different params for different channels";
+      for (int c = 0; c < img_channels; ++c){
+      // We only do random crop when we do training.
+        if (phase_ == TRAIN) {
+          h_off = Rand(img_height - crop_height + 1);
+          w_off = Rand(img_width - crop_width + 1);
+          //LOG(INFO) << "w_off: " << w_off << "h_off: " << h_off;
+        } else {
+          h_off = (img_height - crop_height) / 2;
+          w_off = (img_width - crop_width) / 2;
+          //LOG(INFO) << "w_off: " << w_off << "h_off: " << h_off;
+        }
+        cv::Rect roi(w_off, h_off, crop_width, crop_height);
+        for (int sub_c=0; sub_c<channel_offset; ++sub_c){
+        cropped_channels.push_back(temp_channels[c * channel_offset + sub_c](roi));}
+      }
+      //LOG(INFO) << "size of cropped_channels" << cropped_channels.size();
+      cv::merge(cropped_channels,cv_cropped_img);
+      //cv_cropped_img = cv_img(roi);
+  }
+  else if (crop_size) {
     CHECK_EQ(crop_size, height);
     CHECK_EQ(crop_size, width);
     // We only do random crop when we do training.
-    if (phase_ == TRAIN) {
-      h_off = Rand(img_height - crop_size + 1);
-      w_off = Rand(img_width - crop_size + 1);
-    } else {
-      h_off = (img_height - crop_size) / 2;
-      w_off = (img_width - crop_size) / 2;
+    for (int c = 0; c < img_channels; c += channel_offset){
+      if (phase_ == TRAIN) {
+        h_off = Rand(img_height - crop_size + 1);
+        w_off = Rand(img_width - crop_size + 1);
+      } else {
+    	h_off = (img_height - crop_size) / 2;
+    	w_off = (img_width - crop_size) / 2;
+      }
+      cv::Rect roi(w_off, h_off, crop_size, crop_size);
+      for (int sub_c=0; sub_c<channel_offset; ++sub_c){
+    	  //LOG(INFO) << "Assigning channel " << c + sub_c;
+    	  cropped_channels.push_back(temp_channels[c + sub_c](roi));
+      }
     }
-    cv::Rect roi(w_off, h_off, crop_size, crop_size);
-    cv_cropped_img = cv_img(roi);
+    cv::merge(cropped_channels,cv_cropped_img);
+    //LOG(INFO) << "Number of channels: " << cv_cropped_img.channels();
+    //cv_cropped_img = cv_img(roi);
   } else {
     CHECK_EQ(img_height, height);
     CHECK_EQ(img_width, width);
@@ -293,14 +349,49 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 
   CHECK(cv_cropped_img.data);
 
+  cv::Mat cv_rotated_img = cv_cropped_img;
+  cv::split(cv_cropped_img,temp_channels);
+  std::vector<cv::Mat> rotated_channels;
+  // rotate the image
+  if (rotation && phase_ == TRAIN){
+    CHECK_GT(img_channels, 0);
+    CHECK_LE(img_channels, 180);
+
+    cv::Mat dst;
+    cv::Mat rot_mat;
+    cv::Point2f src_center;
+    int rot;
+    if (crop_size)
+      src_center = cv::Point2f(crop_size/2.0F, crop_size/2.0F);
+    else
+      src_center = cv::Point2f(width/2.0F, height/2.0F);
+
+    for (int c = 0; c < img_channels; c += channel_offset){
+      if (fixed)
+        rot = rotation;
+      else
+        rot = Rand(rotation);
+      //LOG(INFO) << "Angle: " << rot;
+      rot_mat = cv::getRotationMatrix2D(src_center, rot, 1.0);
+      for (int sub_c=0; sub_c<channel_offset; ++sub_c){
+        cv::warpAffine(temp_channels[c + sub_c], dst, rot_mat, temp_channels[c + sub_c].size());
+        //LOG(INFO) << "Assigning channel " << c + sub_c;
+        rotated_channels.push_back(dst);
+      }
+    }
+    cv::merge(rotated_channels,cv_rotated_img);
+  }
+
+  CHECK(cv_rotated_img.data);
+
   Dtype* transformed_data = transformed_blob->mutable_cpu_data();
   int top_index;
   for (int h = 0; h < height; ++h) {
-    const uchar* ptr = cv_cropped_img.ptr<uchar>(h);
+	const uchar* ptr = cv_rotated_img.ptr<uchar>(h);
     int img_index = 0;
     for (int w = 0; w < width; ++w) {
       for (int c = 0; c < img_channels; ++c) {
-        if (do_mirror) {
+    	if (do_mirrors[c/channel_offset]) {
           top_index = (c * height + h) * width + (width - 1 - w);
         } else {
           top_index = (c * height + h) * width + w;
@@ -490,6 +581,8 @@ vector<int> DataTransformer<Dtype>::InferBlobShape(
 template<typename Dtype>
 vector<int> DataTransformer<Dtype>::InferBlobShape(const cv::Mat& cv_img) {
   const int crop_size = param_.crop_size();
+  const int crop_height = param_.crop_height();
+  const int crop_width = param_.crop_width();
   const int img_channels = cv_img.channels();
   const int img_height = cv_img.rows;
   const int img_width = cv_img.cols;
@@ -497,12 +590,20 @@ vector<int> DataTransformer<Dtype>::InferBlobShape(const cv::Mat& cv_img) {
   CHECK_GT(img_channels, 0);
   CHECK_GE(img_height, crop_size);
   CHECK_GE(img_width, crop_size);
+  CHECK_GE(img_height, crop_height);
+  CHECK_GE(img_width, crop_width);
   // Build BlobShape.
   vector<int> shape(4);
   shape[0] = 1;
   shape[1] = img_channels;
-  shape[2] = (crop_size)? crop_size: img_height;
-  shape[3] = (crop_size)? crop_size: img_width;
+  if (crop_width && crop_height) {
+      shape[2] = crop_height;
+      shape[3] = crop_width;
+  }
+  else{
+	  shape[2] = (crop_size)? crop_size: img_height;
+	  shape[3] = (crop_size)? crop_size: img_width;
+  }
   return shape;
 }
 
@@ -522,7 +623,7 @@ vector<int> DataTransformer<Dtype>::InferBlobShape(
 template <typename Dtype>
 void DataTransformer<Dtype>::InitRand() {
   const bool needs_rand = param_.mirror() ||
-      (phase_ == TRAIN && param_.crop_size());
+	(phase_ == TRAIN || (param_.crop_size() ||(param_.crop_height() && param_.crop_width())));
   if (needs_rand) {
     const unsigned int rng_seed = caffe_rng_rand();
     rng_.reset(new Caffe::RNG(rng_seed));

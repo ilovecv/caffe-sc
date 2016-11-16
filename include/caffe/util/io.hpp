@@ -91,13 +91,27 @@ inline void WriteProtoToBinaryFile(
 }
 
 bool ReadFileToDatum(const string& filename, const int label, Datum* datum);
+bool ReadFileToDatum(const string& filename, const std::vector<int> labels, Datum* datum);
 
 inline bool ReadFileToDatum(const string& filename, Datum* datum) {
   return ReadFileToDatum(filename, -1, datum);
 }
 
+
+bool ReadImageToDatum(const string& filename, const std::vector<int> labels,
+    const int height, const int width, const bool is_color,
+    const std::string & encoding, Datum* datum);
 bool ReadImageToDatum(const string& filename, const int label,
     const int height, const int width, const bool is_color,
+    const std::string & encoding, Datum* datum);
+bool ReadImageToDatum(const string& filename1, const string& filename2, const int label,
+    const int height, const int width, const bool is_color,
+    const std::string & encoding, Datum* datum);
+bool ReadImageToDatum(const string& filename1, const string& filename2, const std::vector<int> labels,
+    const int height, const int width, const bool is_color,
+    const std::string & encoding, Datum* datum);
+bool ReadImageToDatum(const string& root_path, const std::vector<std::string> files,
+    const std::vector<int> labels, const int height, const int width, const bool is_color,
     const std::string & encoding, Datum* datum);
 
 inline bool ReadImageToDatum(const string& filename, const int label,
@@ -145,6 +159,10 @@ cv::Mat DecodeDatumToCVMatNative(const Datum& datum);
 cv::Mat DecodeDatumToCVMat(const Datum& datum, bool is_color);
 
 void CVMatToDatum(const cv::Mat& cv_img, Datum* datum);
+
+void CVMatToDatum(const cv::Mat& cv_img1, const cv::Mat& cv_img2, Datum* datum);
+
+void CVMatToDatum(std::vector<cv::Mat> imgs, Datum* datum);
 #endif  // USE_OPENCV
 
 }  // namespace caffe

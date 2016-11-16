@@ -7,6 +7,7 @@
 #include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/im2col.hpp"
+#include<list>
 
 namespace caffe {
 
@@ -33,29 +34,29 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   // we just called weight_cpu_gemm with the same input.
   void ReshapeFilterUpDown();
   void weights_updown_forward();
+  void update_kerneldiff_quene();
   void weights_cut(int weight_channel_offset_,int kernel_int_size,Dtype *weight);
   void weights_pad(int weight_channel_offset_,int kernel_int_size,Dtype *weight);
-  void forward_cpu_gemm(const Dtype* input, const Dtype* weights,
+  void forward_cpu_gemm(const Dtype* input, const Dtype* weights_up, const Dtype* weights_down,
       Dtype* output, bool skip_im2col = false);
   void forward_cpu_bias(Dtype* output, const Dtype* bias);
-  void backward_cpu_gemm(const Dtype* input, const Dtype* weights,
+  void backward_cpu_gemm(const Dtype* input, const Dtype* weights_up,const Dtype* weights_down,
       Dtype* output);
   void weight_cpu_gemm(const Dtype* input, const Dtype* output, Dtype*
-      weights);
+      weights_up, Dtype* weights_down);
   void backward_cpu_kernel_size(const Dtype* output_diff,const Dtype* input,
-       const Dtype* weights, Dtype* kernel_size_diff);
+       const Dtype* weights_up,const Dtype* weights_down, Dtype* kernel_size_diff);
   void backward_cpu_bias(Dtype* bias, const Dtype* input);
 
 #ifndef CPU_ONLY
-  void forward_gpu_gemm(const Dtype* col_input, const Dtype* weights,
+  void forward_gpu_gemm(const Dtype* col_input, const Dtype* weights_up,const Dtype* weights_down,
       Dtype* output, bool skip_im2col = false);
   void forward_gpu_bias(Dtype* output, const Dtype* bias);
-  void backward_gpu_gemm(const Dtype* input, const Dtype* weights,
+  void backward_gpu_gemm(const Dtype* input, const Dtype* weights_up,const Dtype* weights_down,
       Dtype* col_output);
-  void weight_gpu_gemm(const Dtype* col_input, const Dtype* output, Dtype*
-      weights);
+  void weight_gpu_gemm(const Dtype* col_input, const Dtype* output, Dtype* weights_up, Dtype* weights_down);
   void backward_gpu_kernel_size(const Dtype* output_diff,const Dtype* input,
-		  const Dtype* weights, Dtype* kernel_size_diff);
+		  const Dtype* weights_up,const Dtype* weights_down, Dtype* kernel_size_diff);
   void backward_gpu_bias(Dtype* bias, const Dtype* input);
 #endif
 
@@ -71,7 +72,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
 
   /// @brief The spatial dimensions of a filter kernel.
   Blob<int> kernel_shape_up_;
-  Blob<int> kernel_shape_down_;
+  Blob<Dtype> kernel_shape_float_;
   Blob<int> kernel_shape_;
   Blob<int> kernel_shape_max_;
   /// @brief The spatial dimensions of the stride.
@@ -105,7 +106,10 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   bool is_1x1_;
   bool force_nd_im2col_;
   bool Debug_;
+  int check_iteration_;
   Blob<Dtype> weightone_multiplier_;
+  std::list<Dtype> diffhistory_;
+  int iter_;
 
  private:
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
@@ -178,7 +182,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int kernel_dim_;
   int col_offset_;
   int output_offset_;
-  int iter_;
+
 
   AdaptiveConvolutionParameter conv_param_;
   Blob<Dtype> col_buffer_;
@@ -190,6 +194,8 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<Dtype> weight_multiplier_;
   Blob<Dtype> output_multiplier_;
   Blob<Dtype> bias_multiplier_;
+
+
 
 };
 
