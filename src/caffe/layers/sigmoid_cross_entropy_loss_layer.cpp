@@ -23,9 +23,10 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Reshape(
   CHECK_EQ(bottom[0]->count(), bottom[1]->count()) <<
       "SIGMOID_CROSS_ENTROPY_LOSS layer inputs must have the same count.";
   sigmoid_layer_->Reshape(sigmoid_bottom_vec_, sigmoid_top_vec_);
-  int bottom_channels_ = bottom[0]->channels();
+  bottom_channels_ = bottom[0]->channels();
   const int count = bottom[0]->count();
   const int num = bottom[0]->num();
+  //printf("bottom_channels=%d,count=%d,num=%d\n",bottom_channels_,count,num);
   weight_vec_.Reshape(1,1,1,bottom_channels_);
   weight_rep_vec_.Reshape(bottom[0]->shape());
   Dtype* weight = weight_vec_.mutable_cpu_data();
@@ -66,6 +67,7 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   // The forward pass computes the sigmoid outputs.
   sigmoid_bottom_vec_[0] = bottom[0];
+  Dtype* weight = weight_vec_.mutable_cpu_data();
   sigmoid_layer_->Forward(sigmoid_bottom_vec_, sigmoid_top_vec_);
   // Compute the loss (negative log likelihood)
   const int count = bottom[0]->count();
@@ -75,8 +77,9 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
   const Dtype* target = bottom[1]->cpu_data();
   //const Dtype* weight = weight_vec_.cpu_data();
   Dtype loss = 0;
+  //printf("bottom_channels=%d\n",bottom_channels_);
   for (int i = 0; i < count; ++i) {
-    loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
+    loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) - weight[i%bottom_channels_]*
         log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
   }
   top[0]->mutable_cpu_data()[0] = loss / num;

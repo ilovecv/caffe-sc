@@ -108,8 +108,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   bool Debug_;
   int check_iteration_;
   Blob<Dtype> weightone_multiplier_;
-  std::list<Dtype> diffhistory_;
-  int iter_;
+
 
  private:
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
@@ -182,6 +181,10 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int kernel_dim_;
   int col_offset_;
   int output_offset_;
+  int iter_;
+  int seqnum_;
+  float up_ratio_;
+  float down_ratio_;
 
 
   AdaptiveConvolutionParameter conv_param_;
@@ -194,6 +197,9 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<Dtype> weight_multiplier_;
   Blob<Dtype> output_multiplier_;
   Blob<Dtype> bias_multiplier_;
+  Blob<int> kernel_taken_;
+  Blob<int> fixsize_;
+  std::list<Dtype> diffhistory_;
 
 
 
