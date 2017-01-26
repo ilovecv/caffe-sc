@@ -73,7 +73,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   /// @brief The spatial dimensions of a filter kernel.
   Blob<int> kernel_shape_up_;
   Blob<Dtype> kernel_shape_float_;
-  Blob<int> kernel_shape_;
+  Blob<Dtype> kernel_shape_;
   Blob<int> kernel_shape_max_;
   /// @brief The spatial dimensions of the stride.
   Blob<int> stride_;
@@ -85,6 +85,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<int> conv_input_shape_;
   /// @brief The spatial dimensions of the col_buffer.
   vector<int> col_buffer_shape_;
+  vector<int> weight_buffer_shape_;
   /// @brief The spatial dimensions of the output.
   vector<int> output_shape_;
   const vector<int>* bottom_shape_;
@@ -143,11 +144,17 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   #ifndef CPU_ONLY
     inline void conv_im2col_gpu(const Dtype* data, Dtype* col_buff) {
       if (!force_nd_im2col_ && num_spatial_axes_ == 2) {
-        im2col_gpu(data, conv_in_channels_,
-            conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
-            kernel_shape_max_.cpu_data()[0], kernel_shape_max_.cpu_data()[1],
-            pad_.cpu_data()[0], pad_.cpu_data()[1],
-            stride_.cpu_data()[0], stride_.cpu_data()[1],
+    	  //printf("conv_in_channels_:%d,input_height:%d, input_width%d, kernel_height:%d, kernel_width:%d, pad_h:%d, pad_w:%d, strid_h:%d, strid_w:%d\n",
+    	//		  conv_in_channels_,
+    	//		              conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],
+    	//		              kernel_shape_max_.cpu_data()[0], kernel_shape_max_.cpu_data()[1],
+    	//		              pad_.cpu_data()[0], pad_.cpu_data()[1],
+    	//		              stride_.cpu_data()[0], stride_.cpu_data()[1]);
+        im2col_gpu(data, conv_in_channels_,//1|32
+            conv_input_shape_.cpu_data()[1], conv_input_shape_.cpu_data()[2],//122,90||41,30
+            kernel_shape_max_.cpu_data()[0], kernel_shape_max_.cpu_data()[1],//9,9
+            pad_.cpu_data()[0], pad_.cpu_data()[1],//4,4
+            stride_.cpu_data()[0], stride_.cpu_data()[1],//1,1
             dilation_.cpu_data()[0], dilation_.cpu_data()[1], col_buff);
       } else {
         im2col_nd_gpu(data, num_spatial_axes_, num_kernels_im2col_,
@@ -182,24 +189,28 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int col_offset_;
   int output_offset_;
   int iter_;
-  int seqnum_;
+  int min_iter_;
+  int iter_afterflip_;
   float up_ratio_;
   float down_ratio_;
+  float max_thresh_;
 
 
   AdaptiveConvolutionParameter conv_param_;
   Blob<Dtype> col_buffer_;
+  Blob<Dtype> weight_buffer_;
   Blob<Dtype> kernel_diff_buffer_;
-  Blob<Dtype> weight_filter_up_;
-  Blob<Dtype> weight_filter_down_;
-  Blob<Dtype> weight_ratio_up_;
-  Blob<Dtype> weight_ratio_down_;
-  Blob<Dtype> weight_multiplier_;
+  //Blob<Dtype> weight_filter_up_;
+  //Blob<Dtype> weight_filter_down_;
+ // Blob<Dtype> weight_ratio_up_;
+ // Blob<Dtype> weight_ratio_down_;
+  //Blob<Dtype> weight_multiplier_;
   Blob<Dtype> output_multiplier_;
   Blob<Dtype> bias_multiplier_;
   Blob<int> kernel_taken_;
   Blob<int> fixsize_;
-  std::list<Dtype> diffhistory_;
+  Blob<Dtype> gaussian_kernel_;
+  //std::list<Dtype> diffhistory_;
 
 
 

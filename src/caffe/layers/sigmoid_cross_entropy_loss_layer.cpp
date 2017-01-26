@@ -39,10 +39,12 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Reshape(
 	  }
   }
   //printf("num=%d, bottom_channels=%d, count=%d\n",num, bottom_channels, count);
-  //printf("weight:");
+  //printf("balance weight:");
   for(int j=0; j<bottom_channels_; j++){
 	  weight[j]=weight[j]/(num-weight[j]);
+	  //printf("%f ", weight[j]);
   }
+  //printf("\n");
   for(int j=0; j<count; j++){
 	  if(target[j]==1){
 		  weight_rep[j]=1;
@@ -79,8 +81,11 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
   Dtype loss = 0;
   //printf("bottom_channels=%d\n",bottom_channels_);
   for (int i = 0; i < count; ++i) {
-    loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) - weight[i%bottom_channels_]*
-        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
+	  //printf("%f\n",weight[i%bottom_channels_]);
+	loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
+	    log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
+    //loss -= weight[i%bottom_channels_]*(input_data[i] * (target[i] - (input_data[i] >= 0)) -
+    //    log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))))-(1-weight[i%bottom_channels_])*target[i]*log(1+exp(-input_data[i]));
   }
   top[0]->mutable_cpu_data()[0] = loss / num;
 }

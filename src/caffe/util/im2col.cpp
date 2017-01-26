@@ -26,7 +26,6 @@ void im2col_cpu(const Dtype* data_im, const int channels,
     (dilation_h * (kernel_h - 1) + 1)) / stride_h + 1;
   const int output_w = (width + 2 * pad_w -
     (dilation_w * (kernel_w - 1) + 1)) / stride_w + 1;
-  //printf("output_h:%d,output_w:%d\n",output_h,output_w);
   int i=0;
   const int channel_size = height * width;
   for (int channel = channels; channel--; data_im += channel_size) {
