@@ -245,7 +245,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>&
   min_iter_=50;
   max_thresh_=(float)10/min_iter_;
   iter_afterflip_=0;
-  Debug_ = false;
+  Debug_ = true;
 
 }
 template <typename Dtype>
@@ -587,16 +587,16 @@ void BaseAdaptiveConvolutionLayer<Dtype>::weights_cut(int weight_channel_offset_
 	caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,1, kernel_offset, 9, 1, gaussian_kernel_data, weight_buff, 0, weight);
 	int kernel_num = weight_channel_offset_/kernel_offset;
 	int kernel_shift=(kernel_max_size-kernel_size)/2;//(9-1)/2=4
-	Dtype diff_sum=0.0;
+	//Dtype diff_sum=0.0;
 	for (int i=0; i< kernel_num; i++){
 		for(int j=0; j< kernel_max_size; j++){
 		  for(int k=0; k< kernel_max_size; k++){
                          //3                           5                        3                            5
-			  if(((j==kernel_shift-1||j==kernel_max_size-kernel_shift)&&(k>=kernel_shift-1&&k<=kernel_max_size-kernel_shift))||
-					  ((k==kernel_shift-1||k==kernel_max_size-kernel_shift)&&(j>=kernel_shift-1&&j<=kernel_max_size-kernel_shift))){
-				  diff_sum+=weight[i*kernel_offset+j*kernel_max_size+k];
+			  //if(((j==kernel_shift-1||j==kernel_max_size-kernel_shift)&&(k>=kernel_shift-1&&k<=kernel_max_size-kernel_shift))||
+			//		  ((k==kernel_shift-1||k==kernel_max_size-kernel_shift)&&(j>=kernel_shift-1&&j<=kernel_max_size-kernel_shift))){
+				//  diff_sum+=weight[i*kernel_offset+j*kernel_max_size+k];
 				  //printf("%f ",weight[i*kernel_offset+j*kernel_max_size+k]);
-			  }
+			 // }
 			  if(j<=kernel_shift-1||j>=kernel_max_size-kernel_shift||k<=kernel_shift-1||k>=kernel_max_size-kernel_shift){
 				  weight[i*kernel_offset+j*kernel_max_size+k]=0;
 			  }

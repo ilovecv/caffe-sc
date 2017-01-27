@@ -45,7 +45,7 @@ void AccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bottom_data = bottom[0]->cpu_data();
   const Dtype* bottom_label = bottom[1]->cpu_data();
   //const int dim = outer_num_;//100
-  const int num_labels = bottom[0]->shape(label_axis_);//6
+  //const int num_labels = bottom[0]->shape(label_axis_);//6
   //printf("labelnum=%d\n",num_labels);
   //vector<Dtype> maxval(top_k_+1);
   //vector<int> max_id(top_k_+1);

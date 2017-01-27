@@ -185,7 +185,7 @@ void BoostingLayer<Dtype>::adaboost(const Dtype* bottom_data, const Dtype* botto
 		if(sign[i]!=0) alpha[i]=alpha[i]*(ite_-2)/(ite_-1);
 	//	sum1+=alpha[i];
 	}
-	printf("iteration: %d ===========\n",cur_weaknum);
+	//printf("iteration: %d ===========\n",cur_weaknum);
 	//printf("Strong classifier error: %f, weak classifier error: %f \n", errorrate_ith_iter, min_error);
 	if(debug_&&ite_<10){
 		std::ofstream outstrongrate(strongratefile_.c_str(), ios::app);
@@ -210,7 +210,7 @@ void BoostingLayer<Dtype>::adaboost(const Dtype* bottom_data, const Dtype* botto
 	for(int i=0; i<K_;i++){
 		if(sign[i]!=0) totalnum++;
 	}
-	if(debug_==false){
+	if(debug_){
 		std::ofstream outclassifiernum(classifiernumfile_.c_str(), ios::app);
 		if(!(outclassifiernum.is_open())){
 	      	std::cout << "Can not open the classifier_num file\n";
@@ -218,7 +218,7 @@ void BoostingLayer<Dtype>::adaboost(const Dtype* bottom_data, const Dtype* botto
 		outclassifiernum <<ite_ <<" "<< totalnum << " " << cur_weaknum<<"\n";
 		outclassifiernum.close();
 	}
-	if(debug_==false){
+	if(debug_){
 		std::ofstream strongalpha(strongalphafile_.c_str(),ios::app);
 		if(!(strongalpha.is_open())){
 			std::cout << "Can not open the strong alpha file\n";
@@ -233,18 +233,18 @@ void BoostingLayer<Dtype>::adaboost(const Dtype* bottom_data, const Dtype* botto
 	//printf("sum1=%f,sum2=%f\n",sum1,sum2);
 	//write the weak classifier
 	if(debug_&&ite_<=10){
-    std::ofstream outweakclassifier(weakclassifierfile_.c_str(), ios::out);
-    if(!(outweakclassifier.is_open())){
-      	std::cout << "Can not open the weak classifier file\n";
-    }
-    for(int i=0; i<cur_weaknum; i++){
-    	outweakclassifier <<
+		std::ofstream outweakclassifier(weakclassifierfile_.c_str(), ios::out);
+		if(!(outweakclassifier.is_open())){
+			std::cout << "Can not open the weak classifier file\n";
+		}
+		for(int i=0; i<cur_weaknum; i++){
+			outweakclassifier <<
     			adaboost.strongclassifier[i].bindex <<" "<<
     			adaboost.strongclassifier[i].alpha<< " " <<
     			adaboost.strongclassifier[i].pro_thresh << " "<<
     			adaboost.strongclassifier[i].thr_sign<<"\n";
-    }
-    	outweakclassifier.close();
+		}
+		outweakclassifier.close();
     }
 	//return the weight and top_data
 	//realease the space
@@ -441,43 +441,7 @@ void BoostingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 		}
 		outstrongdiff.close();
 	}
-	//printf("The bottom diff--------------\n");
-	//for(int i=0; i<10; i++){
-	//	printf("%f ", bottom_data[i]);
-	//}
-	//printf("||");
-	//for(int i=0; i<10; i++){
-	//	printf("%f ", thresh[i]);
-	//}
-    //printf("\n");
-	/*printf("The sign value--------------\n");
-    for(int i=0; i<K_; i++){
-		printf("%f ", sign[i]);
-	}
-	printf("The bottom diff--------------\n");
-	for(int i=0; i<100; i++){
-		printf("%f ", top_strong_diff[i]);
-	}
-	printf("\n");
-	printf("The top diff\n");
-	for(int i=0; i<100; i++){
-		printf("%f ", bottom_diff[i]);
-	}
-	printf("\n");
-	// Gradient with respect to bottom data
-    //caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, 1, (Dtype)1.,
-    //top_diff, diff_, (Dtype)0., bottom_diff);
-    double maxnum=0, minnum=0;
-    double avgnew = han_avg(top_diff, top[0]->count(), maxnum, minnum);
-    printf("avg=%f, maxnum=%f, minnum=%f\n",avgnew, maxnum, minnum);
-
-    avgnew = han_avg(bottom_diff, bottom[0]->count(), maxnum, minnum);
-    printf("avg=%f, maxnum=%f, minnum=%f\n",avgnew, maxnum, minnum);*/
 }
-//#ifdef CPU_ONLY
-//STUB_GPU(BoostingLayer);
-//#endif
-
 INSTANTIATE_CLASS(BoostingLayer);
 REGISTER_LAYER_CLASS(Boosting);
 
