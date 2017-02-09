@@ -5,7 +5,11 @@
 #include "caffe/layers/base_adaptive_conv_layer.hpp"
 #include "caffe/util/im2col.hpp"
 #include "caffe/util/math_functions.hpp"
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 using namespace std;
+using namespace cv;
 
 namespace caffe {
 
@@ -240,15 +244,15 @@ void BaseAdaptiveConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>&
 	  kernel_taken_.mutable_cpu_data()[(int)(kernel_down_size[t])*num_output_+t]=1;
 	  kernel_down_size[t]=floor((kernel_shape_data[0]+1)/2)*2-1;
   	  kernel_up_size[t] =kernel_down_size[t]+2;
-  	  weights_cut(weight_channel_offset_,kernel_down_size[t],weights_down+weight_channel_offset_*t);
+  	  weights_cut_init(weight_channel_offset_,kernel_down_size[t],weights_down+weight_channel_offset_*t);
   }
   iter_=0;
   //down_ratio_=0.5;
   //up_ratio_=0.5;
-  min_iter_=30;
+  min_iter_=50;
   //max_thresh_=(float)10/min_iter_;
   iter_afterflip_=0;
-  Debug_ = true;
+  Debug_ = false;
 }
 template <typename Dtype>
 void BaseAdaptiveConvolutionLayer<Dtype>::weights_updown_forward(){
@@ -535,17 +539,33 @@ void BaseAdaptiveConvolutionLayer<Dtype>::weights_pad(int weight_channel_offset_
 	int kernel_max_size = kernel_shape_max_.cpu_data()[0];//kernel_int_size is before padding
 	CHECK_LE(kernel_size+2,kernel_max_size)<<"The weight size should smaller or equal to the maximum kernel size";
 	int kernel_offset = kernel_max_size*kernel_max_size;
-	//Dtype beforepad_sum=caffe_cpu_dot(weight_channel_offset_,weight,weightone_multiplier_.cpu_data());
-	Dtype *gaussian_kernel_data=gaussian_kernel_.mutable_cpu_data();
-	Dtype* weight_buff=weight_buffer_.mutable_cpu_data();
-	im2col_cpu(weight, 1, kernel_max_size,kernel_max_size,3,3,1,1,1,1,1,1,weight_buff);
-	caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,1, kernel_offset, 9, 1, gaussian_kernel_data, weight_buff, 0, weight);
+	cv::Mat source = cv::Mat(kernel_size, kernel_size, CV_32FC1);
+	cv::Mat dest = cv::Mat(kernel_size+2, kernel_size+2, CV_32FC1);
+	Dtype beforepad_sum=caffe_cpu_dot(weight_channel_offset_,weight,weightone_multiplier_.cpu_data());
+	//Dtype *gaussian_kernel_data=gaussian_kernel_.mutable_cpu_data();
+	//Dtype* weight_buff=weight_buffer_.mutable_cpu_data();
+	//im2col_cpu(weight, 1, kernel_max_size,kernel_max_size,3,3,1,1,1,1,1,1,weight_buff);
+	//caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,1, kernel_offset, 9, 1, gaussian_kernel_data, weight_buff, 0, weight);
 	int kernel_num = weight_channel_offset_/kernel_offset;//5->7
 	int kernel_shift=(kernel_max_size-kernel_size-2)/2;//(9-5)/2
 	//printf("weight pad before:\n");
-	//for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%.4e ",weight[j*9+k]);} printf("\n");}
-	//Dtype diff_sum=0.0;
+	//for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%f ",weight[j*9+k]);} printf("\n");}
 	for (int i=0; i< kernel_num; i++){
+		float *src=(float*)source.data;
+		for(int j=0; j< kernel_size; j++){
+			for(int k=0; k< kernel_size; k++){
+				weight[i*kernel_offset+(j+kernel_shift+1)*kernel_max_size+k+kernel_shift+1]=(float)j*kernel_size+k;
+				src[j*kernel_size+k]=weight[i*kernel_offset+(j+kernel_shift+1)*kernel_max_size+k+kernel_shift+1];
+			}
+		}
+		cv::resize(source, dest, dest.size(),0,0,cv::INTER_CUBIC);
+		float *dst=(float*)dest.data;
+		for(int j=0; j< kernel_size+2; j++){
+			for(int k=0; k< kernel_size+2; k++){
+				weight[i*kernel_offset+(j+kernel_shift)*kernel_max_size+k+kernel_shift]=dst[j*(kernel_size+2)+k];
+			}
+		}
+
 		for(int j=0; j< kernel_max_size; j++){
 		  for(int k=0; k< kernel_max_size; k++){
 			  	  	  	  //1                           7
@@ -572,10 +592,11 @@ void BaseAdaptiveConvolutionLayer<Dtype>::weights_pad(int weight_channel_offset_
 	//	  }
 	//	}
 	//}
-	//Dtype afterpad_sum=caffe_cpu_dot(weight_channel_offset_,weight,weightone_multiplier_.cpu_data());
+	Dtype afterpad_sum=caffe_cpu_dot(weight_channel_offset_,weight,weightone_multiplier_.cpu_data());
 	//printf("%f %f\n",beforepad_sum, afterpad_sum);
-	//int elm_num=(kernel_size+2)*(kernel_size+2)*kernel_num;
-	//diff_sum=diff_sum/elm_num;
+	int elm_num=(kernel_size+2)*(kernel_size+2)*kernel_num;
+	Dtype diff_sum=(beforepad_sum-afterpad_sum)/elm_num;
+	caffe_add_scalar(weight_channel_offset_,diff_sum,weight);
 	//Dtype ratio=(pad_sum-diff_sum)/pad_sum;
 	//printf("before pad = %f, after pad = %f\n", pad_sum-diff_sum, diff_sum);
 	//if(ratio>0)
@@ -584,7 +605,37 @@ void BaseAdaptiveConvolutionLayer<Dtype>::weights_pad(int weight_channel_offset_
 	//	printf("pad sum = %f, diff sum = %f\n", pad_sum, diff_sum);
 	//}
 	//printf("weight pad after:\n");
-	//for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%.4e ",weight[j*9+k]);} printf("\n");}
+	//for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%f ",weight[j*9+k]);} printf("\n");}
+}
+
+template <typename Dtype>
+void BaseAdaptiveConvolutionLayer<Dtype>::weights_cut_init(int weight_channel_offset_,int kernel_int_size,Dtype *weight){
+	int kernel_max_size = kernel_shape_max_.cpu_data()[0];//kernel_int_size is after cutting
+	CHECK_GE(kernel_int_size,1)<<"The weight size should be bigger or equal than 1";
+	int kernel_offset = kernel_max_size*kernel_max_size;
+	int kernel_num = weight_channel_offset_/kernel_offset;
+	int kernel_shift=(kernel_max_size-kernel_int_size)/2;//(9-1)/2=4
+	Dtype diff_sum=0.0;
+	for (int i=0; i< kernel_num; i++){
+		for(int j=0; j< kernel_max_size; j++){
+		  for(int k=0; k< kernel_max_size; k++){
+                         //3                           5                        3                            5
+			  if(((j==kernel_shift-1||j==kernel_max_size-kernel_shift)&&(k>=kernel_shift-1&&k<=kernel_max_size-kernel_shift))||
+					  ((k==kernel_shift-1||k==kernel_max_size-kernel_shift)&&(j>=kernel_shift-1&&j<=kernel_max_size-kernel_shift))){
+				  diff_sum+=weight[i*kernel_offset+j*kernel_max_size+k];
+				  //printf("%f ",weight[i*kernel_offset+j*kernel_max_size+k]);
+			  }
+			  if(j<=kernel_shift-1||j>=kernel_max_size-kernel_shift||k<=kernel_shift-1||k>=kernel_max_size-kernel_shift){
+				  weight[i*kernel_offset+j*kernel_max_size+k]=0;
+			  }
+		  }
+		}
+	}
+	int elm_num=(kernel_int_size)*(kernel_int_size)*kernel_num;
+	diff_sum=diff_sum/elm_num;
+	//printf("cur_diff=%f\n",diff_sum);
+	caffe_add_scalar(weight_channel_offset_,diff_sum,weight);
+
 }
 
 template <typename Dtype>
@@ -592,34 +643,47 @@ void BaseAdaptiveConvolutionLayer<Dtype>::weights_cut(int weight_channel_offset_
 	int kernel_max_size = kernel_shape_max_.cpu_data()[0];//kernel_int_size is after cutting
 	int kernel_offset = kernel_max_size*kernel_max_size;
 	Dtype beforecut_sum=caffe_cpu_dot(weight_channel_offset_,weight,weightone_multiplier_.cpu_data());
-	Dtype *gaussian_kernel_data=gaussian_kernel_.mutable_cpu_data();
-	Dtype* weight_buff=weight_buffer_.mutable_cpu_data();
+	//Dtype *gaussian_kernel_data=gaussian_kernel_.mutable_cpu_data();
+	//Dtype* weight_buff=weight_buffer_.mutable_cpu_data();
 	CHECK_GE(kernel_size,1)<<"The weight size should be bigger or equal than 1";
-	im2col_cpu(weight, 1, kernel_max_size,kernel_max_size,3,3,1,1,1,1,1,1,weight_buff);
-	caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,1, kernel_offset, 9, 1, gaussian_kernel_data, weight_buff, 0, weight);
+	//im2col_cpu(weight, 1, kernel_max_size,kernel_max_size,3,3,1,1,1,1,1,1,weight_buff);
+	//caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,1, kernel_offset, 9, 1, gaussian_kernel_data, weight_buff, 0, weight);
+	cv::Mat source = cv::Mat(kernel_size+2, kernel_size+2, CV_32FC1);
+    cv::Mat dest = cv::Mat(kernel_size, kernel_size, CV_32FC1);
 	int kernel_num = weight_channel_offset_/kernel_offset;
 	int kernel_shift=(kernel_max_size-kernel_size)/2;//(9-1)/2=4
-	Dtype diff_sum=0.0;
 	for (int i=0; i< kernel_num; i++){
+		float *src=(float*)source.data;
+		for(int j=0; j< kernel_size+2; j++){
+			for(int k=0; k< kernel_size+2; k++){
+				weight[i*kernel_offset+(j+kernel_shift-1)*kernel_max_size+k+kernel_shift-1]=(float)j*kernel_size+k;
+				src[j*(kernel_size+2)+k]=weight[i*kernel_offset+(j+kernel_shift-1)*kernel_max_size+k+kernel_shift-1];
+			}
+		}
+		//printf("weight cut before:\n");
+		//for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%f ",weight[j*9+k]);} printf("\n");}
+		cv::resize(source, dest, dest.size(),0,0,cv::INTER_CUBIC);
+		float *dst=(float*)dest.data;
+		for(int j=0; j< kernel_size; j++){
+			for(int k=0; k< kernel_size; k++){
+				weight[i*kernel_offset+(j+kernel_shift)*kernel_max_size+k+kernel_shift]=dst[j*kernel_size+k];
+			}
+		}
 		for(int j=0; j< kernel_max_size; j++){
 		  for(int k=0; k< kernel_max_size; k++){
-                         //3                           5                        3                            5
-			  //if(((j==kernel_shift-1||j==kernel_max_size-kernel_shift)&&(k>=kernel_shift-1&&k<=kernel_max_size-kernel_shift))||
-			//		  ((k==kernel_shift-1||k==kernel_max_size-kernel_shift)&&(j>=kernel_shift-1&&j<=kernel_max_size-kernel_shift))){
-				//  diff_sum+=weight[i*kernel_offset+j*kernel_max_size+k];
-				  //printf("%f ",weight[i*kernel_offset+j*kernel_max_size+k]);
-			 // }
 			  if(j<=kernel_shift-1||j>=kernel_max_size-kernel_shift||k<=kernel_shift-1||k>=kernel_max_size-kernel_shift){
 				  weight[i*kernel_offset+j*kernel_max_size+k]=0;
 			  }
 		  }
 		}
 	}
+	//printf("weight cut after:\n");
+	//for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%f ",weight[j*9+k]);} printf("\n");}
 	Dtype aftercut_sum=caffe_cpu_dot(weight_channel_offset_,weight,weightone_multiplier_.cpu_data());
 	//printf("%f %f\n",beforecut_sum, aftercut_sum);
 	//Dtype cut_sum=caffe_cpu_dot(weight_channel_offset_,weight,weightone_multiplier_.cpu_data());
 	int elm_num=(kernel_size)*(kernel_size)*kernel_num;
-	diff_sum=(beforecut_sum-aftercut_sum)/elm_num;
+	Dtype diff_sum=(beforecut_sum-aftercut_sum)/elm_num;
 	caffe_add_scalar(weight_channel_offset_,diff_sum,weight);
 	//Dtype ratio=(cut_sum+diff_sum)/cut_sum;
 	//printf("%d , before cut = %f, after cut = %f\n", weight_channel_offset_,cut_sum+diff_sum, cut_sum);
