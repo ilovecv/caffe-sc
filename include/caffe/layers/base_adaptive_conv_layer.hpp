@@ -36,7 +36,6 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   void weights_updown_forward();
   void update_kerneldiff_quene();
   void weights_cut(int weight_channel_offset_,int kernel_int_size,Dtype *weight);
-  void weights_cut_init(int weight_channel_offset_,int kernel_int_size,Dtype *weight);
   void weights_pad(int weight_channel_offset_,int kernel_int_size,Dtype *weight);
   void forward_cpu_gemm(const Dtype* input, const Dtype* weights_up, const Dtype* weights_down,
       Dtype* output, bool skip_im2col = false);
