@@ -1,0 +1,173 @@
+name: "CIFAR10_quick"
+layer {
+  name: "cifar"
+  type: "HDF5Data"
+  top: "data"
+  top: "label"
+  top: "ldmk"
+  hdf5_data_param {
+    source: "/media/datadisk2/database/cmu/data_steps/CNNData/normImage/training_set1_AU1.txt"
+    batch_size: 100
+  }
+  include: { phase: TRAIN }
+}
+layer {
+  name: "cifar"
+  type: "HDF5Data"
+  top: "data"
+  top: "label"
+  top: "ldmk"
+  hdf5_data_param {
+    source: "/media/datadisk2/database/cmu/data_steps/CNNData/normImage/develop_set1_AU1.txt"
+    batch_size: 100
+  }
+  include: { phase: TEST }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 2 decay_mult: 0 }
+  convolution_param {
+    num_output: 32
+    pad: 0
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "relu1"
+  type: "PReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: AVE
+    kernel_size: 3
+    stride: 3
+  }
+}
+layer {
+  name: "norm1"
+  type: "LRN"
+  lrn_param {
+    local_size: 5
+    alpha: 0.0001
+    beta: 0.75
+  }
+  bottom: "pool1"
+  top: "norm1"
+}
+
+layer {
+  name: "ip1"
+  type: "InnerProduct"
+  bottom: "norm1"
+  top: "ip1"
+  param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 2 decay_mult: 0 }
+  inner_product_param {
+    num_output: 128
+    weight_filler {
+      type: "xavier"
+    }
+  }
+}
+layer {
+  name: "drop1"
+  type: "Dropout"
+  bottom: "ip1"
+  top: "ip1"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+
+#flat the layer and cocate them together
+layer {
+  name: "ip_ldmk"
+  type: "InnerProduct"
+  bottom: "ldmk"
+  top: "ip_ldmk"
+  param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 2 decay_mult: 0 }
+  inner_product_param {
+    num_output: 32
+    weight_filler {
+      type: "xavier"
+    }
+  }
+}
+layer {
+  name: "drop_ldmk"
+  type: "Dropout"
+  bottom: "ip_ldmk"
+  top: "ip_ldmk"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+layer {
+  name: "concat1"
+  type: "Concat"
+  concat_param {
+    concat_dim: 1
+  }
+  bottom: "ip1"
+  bottom: "ip_ldmk"
+  top: "concat1" 
+}
+layer {
+  name: "ip2"
+  type: "InnerProduct"
+  bottom: "concat1"
+  top: "ip2"
+  param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 2 decay_mult: 0 }
+  inner_product_param {
+    num_output: 1
+    weight_filler {
+      type: "xavier"
+    }
+  }
+}
+layer {
+  name: "accuracy"
+  type: "Accuracy"
+  bottom: "ip2"
+  bottom: "label"
+  top: "accuracy"
+#  include: { phase: TEST }
+}
+layer {
+  name: "loss"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "ip2"
+  bottom: "label"
+  top: "loss"
+}
+layer {
+  name: "score"
+  type: "Score"
+  bottom: "ip2"
+  bottom: "label"
+  top: "weight_rate"
+  score_param {
+      dest_file: "/media/datadisk/database/cmu/data_steps/testResult/normImage_binary1/outscore_baseline1.txt"
+  }
+  include: { phase: TEST }
+
+}

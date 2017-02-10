@@ -208,11 +208,11 @@ void BaseAdaptiveConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>&
   weight_buffer_shape_.push_back(kernel_shape_max_data[0]);
   weight_buffer_.Reshape(weight_buffer_shape_);
   gaussian_kernel_.Reshape(1,1,1,9);
-  Dtype * gaussian_kernel_data=gaussian_kernel_.mutable_cpu_data();
-  float kernel[9]={1.0f/16, 1.0f/8, 1.0f/16, 1.0f/8, 1.0f/4, 1.0f/8, 1.0f/16, 1.0f/8, 1.0f/16};
-  for(int i=0; i<9; i++){
-    gaussian_kernel_data[i]=kernel[i];
-  }
+  //Dtype * gaussian_kernel_data=gaussian_kernel_.mutable_cpu_data();
+  //float kernel[9]={1.0f/16, 1.0f/8, 1.0f/16, 1.0f/8, 1.0f/4, 1.0f/8, 1.0f/16, 1.0f/8, 1.0f/16};
+  //for(int i=0; i<9; i++){
+   // gaussian_kernel_data[i]=kernel[i];
+ // }
   //caffe_set(num_output_,(Dtype)(kernel_shape_data[0]),this->blobs_[4]->mutable_cpu_data());
   //this->blobs_[3]->mutable_cpu_data()[0]=kernel_shape_data[0];
   kernel_dim_ = this->blobs_[0]->count(1);//conv_in_channels_,kernel_height_, kernel_width_
@@ -395,7 +395,9 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
 			  weights_pad(weight_channel_offset_,kernel_up_size[i],weights_up+weight_channel_offset_*i);
 			  kernel_down_size[i]=kernel_up_size[i];
 			  kernel_up_size[i]=kernel_up_size[i]+2;
+			  kernel_float_size[i]=kernel_down_size[i]+1;
 			  sizechange=true;
+			  iter_afterflip_=0;
 			  //printf("hahahaha\n");
 		  }
 		  else if(kernel_float_size[i]<kernel_down_size[i]&&kernel_down_size[i]>1&&fixsize_channel[i]==0){
@@ -403,7 +405,9 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
 			  weights_cut(weight_channel_offset_,kernel_down_size[i]-2,weights_down+weight_channel_offset_*i);//3->1
 			  kernel_up_size[i]=kernel_down_size[i];//3
 			  kernel_down_size[i]=kernel_down_size[i]-2;//1
+			  kernel_float_size[i]=kernel_down_size[i]+1;
 			  sizechange=true;
+			  iter_afterflip_=0;
 			  //printf("hahahaha\n");g
 		  }
 		  if(sizechange==true&&fixsize_channel[i]==0){
@@ -411,7 +415,10 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
 			  if(kernel_size_taken_[num_output_*(int)(kernel_down_size[i])+i]>2){
 				  fixsize_channel[i]=1;
 			  }
-			  iter_afterflip_=0;
+
+		  }
+		  if(iter_afterflip_<min_iter_){
+			  kernel_float_size[i]=kernel_down_size[i]+1;
 		  }
 		  up_ratio_=(kernel_float_size[i]-kernel_down_size[i])/2;
 		  down_ratio_=(kernel_up_size[i]-kernel_float_size[i])/2;
@@ -513,14 +520,16 @@ void BaseAdaptiveConvolutionLayer<Dtype>::update_kerneldiff_quene(){
   //Dtype* kernel_float_size = this->blobs_[3]->mutable_cpu_data();
   int* fixsize_channel = fixsize_.mutable_cpu_data();
   for(int i=0; i<num_output_;i++){
-  	if(fixsize_channel[i]==1||iter_<min_iter_)
+  	if(fixsize_channel[i]==1||iter_afterflip_<min_iter_){
   		kernel_float_diff[i]=0;
+  	}
   	//else if(kernel_float_diff[i]>max_thresh_)
   	//	kernel_float_diff[i]=max_thresh_;
   }
   //calculate the average
   if(Debug_){
 	  printf("\n");
+	  //printf("iter_afterflip:%d, min_iter_:%d\n", iter_afterflip_, min_iter_);
 	  printf("Kernel difference:");
 	  for(int i=0; i<num_output_; i++)
 		  printf("%d:%.7f ",i+1,kernel_float_diff[i]);
