@@ -97,7 +97,7 @@ layer {
   param { lr_mult: 1 decay_mult: 1 } #weight_up
   param { lr_mult: 1 decay_mult: 1 } #weight_down
   param { lr_mult: 2 decay_mult: 0 } #bias
-  param { lr_mult: 50 decay_mult: 0 } #kernel size
+  param { lr_mult: 100 decay_mult: 0 } #kernel size
   param { lr_mult: 0 decay_mult: 0 } #down size
   adaptiveconvolution_param {
   #convolution_param {
@@ -160,21 +160,21 @@ layer {
 
 layer {
   name: "conv2"
-  #type: "AdaptiveConvolution"
-  type: "Convolution"
+  type: "AdaptiveConvolution"
+  #type: "Convolution"
   bottom: "norm1"
   top: "conv2"
   param { lr_mult: 1 decay_mult: 1 }
-  #param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  #param { lr_mult: 20 decay_mult: 0 }
-  #param { lr_mult: 0 decay_mult: 0 }
-  convolution_param {
-  #adaptiveconvolution_param {
+  param { lr_mult: 100 decay_mult: 0 }
+  param { lr_mult: 0 decay_mult: 0 }
+  #convolution_param {
+  adaptiveconvolution_param {
     num_output: 32
-    pad: 0
-    kernel_size: 5
-    #max_kernel_size: 9
+    pad: 2
+    kernel_size: 6
+    max_kernel_size: 9
     stride: 1
     weight_filler {
       type: "xavier"
@@ -214,15 +214,21 @@ layer {
 }
 layer {
   name: "conv3"
-  type: "Convolution"
+  type: "AdaptiveConvolution"
+  #type: "Convolution"
   bottom: "norm2"
   top: "conv3"
   param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  convolution_param {
-    num_output: 64
-    pad: 0
-    kernel_size: 5
+  param { lr_mult: 100 decay_mult: 0 }
+  param { lr_mult: 0 decay_mult: 0 }
+  #convolution_param {
+  adaptiveconvolution_param {
+    num_output: 32
+    pad: 2
+    kernel_size: 6
+    max_kernel_size: 9
     stride: 1
     weight_filler {
       type: "xavier"
