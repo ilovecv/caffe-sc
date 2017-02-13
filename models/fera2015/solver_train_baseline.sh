@@ -1,15 +1,17 @@
-#!/bin/sh
+#!/bin/bash
 curau=$1
 datadir=$2
 resdir=$3
 foldname=$4
+kersize=$5
+let pad=($kersize-1)/2
 FILE="$resdir/solver${curau}.prototxt"
 /bin/cat <<EOM >$FILE
 net: "$resdir/train_val${curau}.prototxt"
 test_iter: 470
 # Carry out testing every 500 training iterations.
 test_interval: 100
-debug_info: false
+
 test_compute_loss: true
 # The base learning rate, momentum and the weight decay of the network.
 base_lr: 0.0005
@@ -18,7 +20,7 @@ weight_decay: 0.06
 # The learning rate policy
 lr_policy: "step"
 gamma: 0.6
-stepsize: 400
+stepsize: 600
 # Display every 100 iterations
 display: 200
 # The maximum number of iterations
@@ -43,14 +45,14 @@ layer {
     mirror: 1
     crop_height: 122
     crop_width: 90
-    rotation: 10
+    rotation: 10 
   }
   image_data_param {
     image_num: 1
     label_dim: 1
     #new_height: 128
     #new_width: 96
-    root_folder: "$datadir/$foldname/"
+    root_folder: "$datadir/${foldname}/"
     source: "$datadir/AU${curau}_training.txt"
     balance: false
     balance_axis: 0
@@ -75,8 +77,8 @@ layer {
     image_num: 1
     label_dim: 1
     #new_height: 128
-    #ls new_width: 96
-    root_folder: "$datadir/$foldname/"
+    #new_width: 96
+    root_folder: "$datadir/${foldname}/"
     source: "$datadir/AU${curau}_develop.txt"
     balance: false
     balance_axis: 0
@@ -85,26 +87,19 @@ layer {
     is_color: false
     shuffle: false
   }
-
   include: { phase: TEST }
 }
 layer {
   name: "conv1"
-  type: "AdaptiveConvolution"
-  #type: "Convolution"
+  type: "Convolution"
   bottom: "data"
   top: "conv1"
-  param { lr_mult: 1 decay_mult: 1 } #weight_up
-  param { lr_mult: 1 decay_mult: 1 } #weight_down
-  param { lr_mult: 2 decay_mult: 0 } #bias
-  param { lr_mult: 50 decay_mult: 0 } #kernel size
-  param { lr_mult: 0 decay_mult: 0 } #down size
-  adaptiveconvolution_param {
-  #convolution_param {
+  param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 2 decay_mult: 0 }
+  convolution_param {
     num_output: 32
-    pad: 2
-    kernel_size: 6
-    max_kernel_size: 9
+    pad: ${pad}
+    kernel_size: ${kersize}
     stride: 1
     weight_filler {
       type: "xavier"
@@ -114,31 +109,16 @@ layer {
     }
   }
 }
-#layer {
-#  name: "bn1"
-#  type: "BatchNorm"
-#  bottom: "conv1"
-#  top: "bn1"
-#  param {
-#    lr_mult: 0
-#  }
-#  param {
-#    lr_mult: 0
-#  }
-#  param {
-#    lr_mult: 0
-#  }
-#}
 layer {
   name: "relu1"
   type: "PReLU"
   bottom: "conv1"
-  top: "relu1"
+  top: "conv1"
 }
 layer {
   name: "pool1"
   type: "Pooling"
-  bottom: "relu1"
+  bottom: "conv1"
   top: "pool1"
   pooling_param {
     pool: AVE
@@ -160,21 +140,15 @@ layer {
 
 layer {
   name: "conv2"
-  #type: "AdaptiveConvolution"
   type: "Convolution"
   bottom: "norm1"
   top: "conv2"
   param { lr_mult: 1 decay_mult: 1 }
-  #param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  #param { lr_mult: 20 decay_mult: 0 }
-  #param { lr_mult: 0 decay_mult: 0 }
   convolution_param {
-  #adaptiveconvolution_param {
     num_output: 32
-    pad: 0
+    pad: 2
     kernel_size: 5
-    #max_kernel_size: 9
     stride: 1
     weight_filler {
       type: "xavier"
@@ -221,7 +195,7 @@ layer {
   param { lr_mult: 2 decay_mult: 0 }
   convolution_param {
     num_output: 64
-    pad: 0
+    pad: 2
     kernel_size: 5
     stride: 1
     weight_filler {
@@ -238,17 +212,6 @@ layer {
   bottom: "conv3"
   top: "conv3"
 }
-#layers {
-#  name: "pool3"
-#  type: POOLING
-#  bottom: "conv3"
-#  top: "pool3"
-#  pooling_param {
-#    pool: AVE
-#    kernel_size: 2
-#    stride: 2
-#  }
-#}
 layer {
   name: "norm3"
   type: "LRN"
@@ -260,7 +223,6 @@ layer {
   bottom: "conv3"
   top: "norm3"
 }
-
 layer {
   name: "ip1"
   type: "InnerProduct"
@@ -275,25 +237,25 @@ layer {
     }
   }
 }
-#layer {
-#  name: "relu4"
-#  type: "PReLU"
-#  bottom: "ip1"
-#  top: "relu4"
-#}
-#layer {
-#  name: "drop1"
-#  type: "Dropout"
-#  bottom: "relu4"
-#  top: "drop1"
-#  dropout_param {
-#    dropout_ratio: 0.5
-#  }
-#}
+layer {
+  name: "relu4"
+  type: "PReLU"
+  bottom: "ip1"
+  top: "relu4"
+}
+layer {
+  name: "drop1"
+  type: "Dropout"
+  bottom: "relu4"
+  top: "drop1"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
 layer {
   name: "ip2"
   type: "InnerProduct"
-  bottom: "ip1"
+  bottom: "drop1"
   top: "ip2"
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
@@ -319,12 +281,6 @@ layer {
   bottom: "label"
   top: "loss"
 }
-#layer {
-#  name: "loss"
-#  type: "SoftmaxWithLoss"
-#  bottom: "ip2"
-#  bottom: "label"
-#}
 layer {
   name: "score"
   type: "Score"
