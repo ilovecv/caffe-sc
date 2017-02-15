@@ -52,7 +52,7 @@ layer {
     #new_width: 96
     root_folder: "$datadir/${foldname}/"
     source: "$datadir/AU${curau}_training.txt"
-    balance: false
+    balance: true
     balance_axis: 0
     balance_coeff: 0.2
     batch_size: 100 
@@ -96,7 +96,7 @@ layer {
   param { lr_mult: 2 decay_mult: 0 }
   convolution_param {
     num_output: 32
-    pad: 0
+    pad: 2
     kernel_size: 5
     stride: 1
     weight_filler {
