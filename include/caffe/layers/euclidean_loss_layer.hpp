@@ -100,6 +100,10 @@ class EuclideanLossLayer : public LossLayer<Dtype> {
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
   Blob<Dtype> diff_;
+  int bottom_channels_;
+
+  Blob<Dtype> weight_vec_;
+  Blob<Dtype> weight_rep_vec_;
 };
 
 }  // namespace caffe

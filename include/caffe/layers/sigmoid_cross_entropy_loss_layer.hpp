@@ -107,6 +107,8 @@ class SigmoidCrossEntropyLossLayer : public LossLayer<Dtype> {
 
   Blob<Dtype> weight_vec_;
   Blob<Dtype> weight_rep_vec_;
+  Blob<Dtype> temp1_vec_;
+  Blob<Dtype> temp2_vec_;
 };
 
 }  // namespace caffe

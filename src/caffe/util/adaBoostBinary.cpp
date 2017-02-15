@@ -380,7 +380,7 @@ int adaBoostBinary::updataWeight(CvMat *feature_train,lda_classifier *current_be
 	//printf("the threshold for current iteration is %e\n", current_best_classifier->pro_thresh);
 	if(min_error<=0.0)
 	{
-		printf("the min error for current iteration is 0, so the program have to stop and break, sorry!!\n");
+		//printf("the min error for current iteration is 0, so the program have to stop and break, sorry!!\n");
 		return -1;
 	}
 	current_best_classifier->alpha=0.5*log((1.0+min_error)/(1-min_error));
@@ -448,9 +448,9 @@ float adaBoostBinary::testStrongClassifier()
 		if(score>0&&labelsign[t]<=0)
 			error_num_neg++;
 	}
-	printf("Error number for positive %d, for negative %d\n", error_num_pos, error_num_neg);
+	//printf("Error number for positive %d, for negative %d\n", error_num_pos, error_num_neg);
 	errorrate_ith_iter=(double)(error_num_pos+error_num_neg)/(pos_sample_num+neg_sample_num);
-	printf("The test error rate is %.4f in training data\n",errorrate_ith_iter);
+	//printf("The test error rate is %.4f in training data\n",errorrate_ith_iter);
 	//printf("finished ada test...\n\n");
 	return errorrate_ith_iter;
 

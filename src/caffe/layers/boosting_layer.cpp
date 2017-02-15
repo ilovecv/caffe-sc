@@ -161,7 +161,7 @@ void BoostingLayer<Dtype>::adaboost(const Dtype* bottom_data, const Dtype* botto
 		        second_sum=std::accumulate(second_list.begin(), second_list.end(),0.0f);
 		        if(second_sum<=first_sum)
 		        {
-		        	printf("Break, the error in the training set begin to decrease\n");
+		        	//printf("Break, the error in the training set begin to decrease\n");
 		            break;
 		        }
 		    }
@@ -170,12 +170,12 @@ void BoostingLayer<Dtype>::adaboost(const Dtype* bottom_data, const Dtype* botto
 		//printf("Strong classifier error: %f, weak classifier error: %f \n", errorrate_ith_iter, min_error);
 		if (min_error <= 0)
 		{
-			printf("Break: the current iteration error is bigger than 0.5\n");
+			//printf("Break: the current iteration error is bigger than 0.5\n");
 			break;
 		}
 		else if (errorrate_ith_iter <= 0.03)
 		{
-			printf("Break: We have got the best performance, 99%% strong classifier performance!\n");
+			//printf("Break: We have got the best performance, 99%% strong classifier performance!\n");
 			break;
 		}
 	}
