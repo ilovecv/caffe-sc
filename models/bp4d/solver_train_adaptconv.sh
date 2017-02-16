@@ -52,7 +52,7 @@ layer {
     #new_width: 96
     root_folder: "$datadir/$foldname/"
     source: "$datadir/AU${curau}_training.txt"
-    balance: false
+    balance: true
     balance_axis: 0
     balance_coeff: 0.2
     batch_size: 100 
@@ -96,7 +96,7 @@ layer {
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  param { lr_mult: 50 decay_mult: 0 }
+  param { lr_mult: 100 decay_mult: 0 }
   param { lr_mult: 0 decay_mult: 0 }
   adaptiveconvolution_param {
     num_output: 32
@@ -164,7 +164,7 @@ layer {
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  param { lr_mult: 50 decay_mult: 0 }
+  param { lr_mult: 100 decay_mult: 0 }
   param { lr_mult: 0 decay_mult: 0 }
   adaptiveconvolution_param {
     num_output: 32
@@ -216,7 +216,7 @@ layer {
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  param { lr_mult: 50 decay_mult: 0 }
+  param { lr_mult: 100 decay_mult: 0 }
   param { lr_mult: 0 decay_mult: 0 }
   adaptiveconvolution_param {
     num_output: 64
