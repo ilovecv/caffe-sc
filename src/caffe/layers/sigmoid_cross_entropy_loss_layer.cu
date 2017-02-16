@@ -16,18 +16,27 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
   }
   if (propagate_down[0]) {
     // First, compute the diff
+	//printf("new sigmoid output:\n");
+	//for(int j=0; j<100;j++){
+	//      printf("%f ", sigmoid_output_->cpu_data()[j]);
+	//}
+	//printf("\n");
     const int count = bottom[0]->count();
     const int num = bottom[0]->num();
     const Dtype* sigmoid_output_data = sigmoid_output_->gpu_data();
     const Dtype* target = bottom[1]->gpu_data();
     const Dtype* weight_rep=weight_rep_vec_.gpu_data();
+    const Dtype* temp1 = temp1_vec_.gpu_data();
+    const Dtype* temp2 = temp2_vec_.gpu_data();
     Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
-    caffe_copy(count, sigmoid_output_data, bottom_diff);
-    caffe_gpu_axpy(count, Dtype(-1), target, bottom_diff);
-    caffe_gpu_mul(count, weight_rep, bottom_diff, bottom_diff);
+
+    caffe_gpu_mul(count, sigmoid_output_data, temp2, bottom_diff);
+    caffe_gpu_add(count, bottom_diff, temp1, bottom_diff);
     // Scale down gradient
+
     const Dtype loss_weight = top[0]->cpu_diff()[0];
     caffe_gpu_scal(count, loss_weight / num, bottom_diff);
+
   }
 }
 

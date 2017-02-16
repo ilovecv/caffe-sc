@@ -9,11 +9,11 @@ for run in 1 2 3 4 5 #6 7 8 9 10
 do
     resdir=$dir/testResult/${foldname}_baseline_run${run}_kersize${kersize}/
     mkdir $resdir
-    for i in 0 1 2 3 4 5 
+    for i in 0 1 2 3 4 5 6 7 8 9 10
     do
     curAU=${aulist[${i}]}
     scorefile=$resdir/outscore_baseline${curAU}.txt
-    rm $scorefile
+    #rm $scorefile
     if [ ! -e "$scorefile" ]
     then
     	echo "$scorefile not exist"
