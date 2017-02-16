@@ -101,7 +101,7 @@ layer {
   adaptiveconvolution_param {
     num_output: 32
     pad: 2
-    kernel_size: 6
+    kernel_size: 4
     max_kernel_size: 9
     stride: 1
     weight_filler {
@@ -158,15 +158,19 @@ layer {
 
 layer {
   name: "conv2"
-  type: "Convolution"
+  type: "AdaptiveConvolution"
   bottom: "norm1"
   top: "conv2"
   param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  convolution_param {
+  param { lr_mult: 50 decay_mult: 0 }
+  param { lr_mult: 0 decay_mult: 0 }
+  adaptiveconvolution_param {
     num_output: 32
-    pad: 0
-    kernel_size: 5
+    pad: 2
+    kernel_size: 4
+    max_kernel_size: 9
     stride: 1
     weight_filler {
       type: "xavier"
@@ -206,15 +210,19 @@ layer {
 }
 layer {
   name: "conv3"
-  type: "Convolution"
+  type: "AdaptiveConvolution"
   bottom: "norm2"
   top: "conv3"
   param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  convolution_param {
+  param { lr_mult: 50 decay_mult: 0 }
+  param { lr_mult: 0 decay_mult: 0 }
+  adaptiveconvolution_param {
     num_output: 64
-    pad: 0
-    kernel_size: 5
+    pad: 2
+    kernel_size: 4
+    max_kernel_size: 9
     stride: 1
     weight_filler {
       type: "xavier"

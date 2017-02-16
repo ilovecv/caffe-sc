@@ -103,7 +103,7 @@ layer {
   #convolution_param {
     num_output: 32
     pad: 2
-    kernel_size: 6
+    kernel_size: 4
     max_kernel_size: 9
     stride: 1
     weight_filler {
@@ -173,7 +173,7 @@ layer {
   adaptiveconvolution_param {
     num_output: 32
     pad: 2
-    kernel_size: 6
+    kernel_size: 4
     max_kernel_size: 9
     stride: 1
     weight_filler {
@@ -225,9 +225,9 @@ layer {
   param { lr_mult: 0 decay_mult: 0 }
   #convolution_param {
   adaptiveconvolution_param {
-    num_output: 32
+    num_output: 64
     pad: 2
-    kernel_size: 6
+    kernel_size: 4
     max_kernel_size: 9
     stride: 1
     weight_filler {
