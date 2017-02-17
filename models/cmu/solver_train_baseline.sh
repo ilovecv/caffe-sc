@@ -1,15 +1,18 @@
 #!/bin/sh
 curau=$1
-datadir=$2
-resdir=$3
-foldname=$4
+setnum=$2
+datadir=$3
+resdir=$4
+foldname=$5
+testnum=$6
+
 FILE="$resdir/solver${curau}.prototxt"
 /bin/cat <<EOM >$FILE
 net: "$resdir/train_val${curau}.prototxt"
-test_iter: 470
+test_iter: ${testnum}
 # Carry out testing every 500 training iterations.
-test_interval: 100
-debug_info: false
+test_interval: 50
+
 test_compute_loss: true
 # The base learning rate, momentum and the weight decay of the network.
 base_lr: 0.0005
@@ -31,9 +34,9 @@ snapshot_prefix: "$resdir/train${curau}_"
 solver_mode: GPU
 EOM
 
+
 FILE="$resdir/train_val${curau}.prototxt"
 /bin/cat <<EOM >$FILE
-name: "CIFAR10_quick"
 layer {
   name: "cifar"
   type: "ImageData"
@@ -51,8 +54,8 @@ layer {
     #new_height: 128
     #new_width: 96
     root_folder: "$datadir/$foldname/"
-    source: "$datadir/AU${curau}_training.txt"
-    balance: false
+    source: "$datadir/training_set${setnum}_AU${curau}.txt"
+    balance: true
     balance_axis: 0
     balance_coeff: 0.2
     batch_size: 100 
@@ -77,7 +80,7 @@ layer {
     #new_height: 128
     #ls new_width: 96
     root_folder: "$datadir/$foldname/"
-    source: "$datadir/AU${curau}_develop.txt"
+    source: "$datadir/develop_set${setnum}_AU${curau}.txt"
     balance: false
     balance_axis: 0
     balance_coeff: 0.2
@@ -90,21 +93,15 @@ layer {
 }
 layer {
   name: "conv1"
-  type: "AdaptiveConvolution"
-  #type: "Convolution"
+  type: "Convolution"
   bottom: "data"
   top: "conv1"
-  param { lr_mult: 1 decay_mult: 1 } #weight_up
-  param { lr_mult: 1 decay_mult: 1 } #weight_down
-  param { lr_mult: 2 decay_mult: 0 } #bias
-  param { lr_mult: 100 decay_mult: 0 } #kernel size
-  param { lr_mult: 0 decay_mult: 0 } #down size
-  adaptiveconvolution_param {
-  #convolution_param {
+  param { lr_mult: 1 decay_mult: 1 }
+  param { lr_mult: 2 decay_mult: 0 }
+  convolution_param {
     num_output: 32
-    pad: 2
-    kernel_size: 4
-    max_kernel_size: 9
+    pad: 0
+    kernel_size: 5
     stride: 1
     weight_filler {
       type: "xavier"
@@ -114,31 +111,16 @@ layer {
     }
   }
 }
-#layer {
-#  name: "bn1"
-#  type: "BatchNorm"
-#  bottom: "conv1"
-#  top: "bn1"
-#  param {
-#    lr_mult: 0
-#  }
-#  param {
-#    lr_mult: 0
-#  }
-#  param {
-#    lr_mult: 0
-#  }
-#}
 layer {
   name: "relu1"
   type: "PReLU"
   bottom: "conv1"
-  top: "relu1"
+  top: "conv1"
 }
 layer {
   name: "pool1"
   type: "Pooling"
-  bottom: "relu1"
+  bottom: "conv1"
   top: "pool1"
   pooling_param {
     pool: AVE
@@ -160,21 +142,15 @@ layer {
 
 layer {
   name: "conv2"
-  type: "AdaptiveConvolution"
-  #type: "Convolution"
+  type: "Convolution"
   bottom: "norm1"
   top: "conv2"
   param { lr_mult: 1 decay_mult: 1 }
-  param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  param { lr_mult: 100 decay_mult: 0 }
-  param { lr_mult: 0 decay_mult: 0 }
-  #convolution_param {
-  adaptiveconvolution_param {
+  convolution_param {
     num_output: 32
-    pad: 2
-    kernel_size: 4
-    max_kernel_size: 9
+    pad: 0
+    kernel_size: 5
     stride: 1
     weight_filler {
       type: "xavier"
@@ -214,21 +190,15 @@ layer {
 }
 layer {
   name: "conv3"
-  type: "AdaptiveConvolution"
-  #type: "Convolution"
+  type: "Convolution"
   bottom: "norm2"
   top: "conv3"
   param { lr_mult: 1 decay_mult: 1 }
-  param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
-  param { lr_mult: 100 decay_mult: 0 }
-  param { lr_mult: 0 decay_mult: 0 }
-  #convolution_param {
-  adaptiveconvolution_param {
+  convolution_param {
     num_output: 64
-    pad: 2
-    kernel_size: 4
-    max_kernel_size: 9
+    pad: 0
+    kernel_size: 5
     stride: 1
     weight_filler {
       type: "xavier"
@@ -244,17 +214,6 @@ layer {
   bottom: "conv3"
   top: "conv3"
 }
-#layers {
-#  name: "pool3"
-#  type: POOLING
-#  bottom: "conv3"
-#  top: "pool3"
-#  pooling_param {
-#    pool: AVE
-#    kernel_size: 2
-#    stride: 2
-#  }
-#}
 layer {
   name: "norm3"
   type: "LRN"
@@ -266,7 +225,6 @@ layer {
   bottom: "conv3"
   top: "norm3"
 }
-
 layer {
   name: "ip1"
   type: "InnerProduct"
@@ -281,25 +239,25 @@ layer {
     }
   }
 }
-#layer {
-#  name: "relu4"
-#  type: "PReLU"
-#  bottom: "ip1"
-#  top: "relu4"
-#}
-#layer {
-#  name: "drop1"
-#  type: "Dropout"
-#  bottom: "relu4"
-#  top: "drop1"
-#  dropout_param {
-#    dropout_ratio: 0.5
-#  }
-#}
+layer {
+  name: "relu4"
+  type: "PReLU"
+  bottom: "ip1"
+  top: "relu4"
+}
+layer {
+  name: "drop1"
+  type: "Dropout"
+  bottom: "relu4"
+  top: "drop1"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
 layer {
   name: "ip2"
   type: "InnerProduct"
-  bottom: "ip1"
+  bottom: "drop1"
   top: "ip2"
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }
@@ -325,12 +283,6 @@ layer {
   bottom: "label"
   top: "loss"
 }
-#layer {
-#  name: "loss"
-#  type: "SoftmaxWithLoss"
-#  bottom: "ip2"
-#  bottom: "label"
-#}
 layer {
   name: "score"
   type: "Score"

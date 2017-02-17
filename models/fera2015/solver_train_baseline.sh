@@ -20,7 +20,7 @@ weight_decay: 0.06
 # The learning rate policy
 lr_policy: "step"
 gamma: 0.6
-stepsize: 600
+stepsize: 400
 # Display every 100 iterations
 display: 200
 # The maximum number of iterations
@@ -98,7 +98,7 @@ layer {
   param { lr_mult: 2 decay_mult: 0 }
   convolution_param {
     num_output: 32
-    pad: ${pad}
+    pad: 2
     kernel_size: ${kersize}
     stride: 1
     weight_filler {
@@ -147,7 +147,7 @@ layer {
   param { lr_mult: 2 decay_mult: 0 }
   convolution_param {
     num_output: 32
-    pad: 2
+    pad: 0
     kernel_size: 5
     stride: 1
     weight_filler {
@@ -195,7 +195,7 @@ layer {
   param { lr_mult: 2 decay_mult: 0 }
   convolution_param {
     num_output: 64
-    pad: 2
+    pad: 0
     kernel_size: 5
     stride: 1
     weight_filler {
@@ -237,25 +237,25 @@ layer {
     }
   }
 }
-layer {
-  name: "relu4"
-  type: "PReLU"
-  bottom: "ip1"
-  top: "relu4"
-}
-layer {
-  name: "drop1"
-  type: "Dropout"
-  bottom: "relu4"
-  top: "drop1"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
+#layer {
+#  name: "relu4"
+#  type: "PReLU"
+#  bottom: "ip1"
+#  top: "relu4"
+#}
+#layer {
+#  name: "drop1"
+#  type: "Dropout"
+#  bottom: "relu4"
+#  top: "drop1"
+#  dropout_param {
+#    dropout_ratio: 0.5
+#  }
+#}
 layer {
   name: "ip2"
   type: "InnerProduct"
-  bottom: "drop1"
+  bottom: "ip1"
   top: "ip2"
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }

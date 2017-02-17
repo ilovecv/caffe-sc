@@ -1,15 +1,16 @@
 #!/bin/sh
 curau=$1
-datadir=$2
-resdir=$3
-foldname=$4
+setnum=$2
+datadir=$3
+resdir=$4
+foldname=$5
 FILE="$resdir/solver${curau}.prototxt"
 /bin/cat <<EOM >$FILE
 net: "$resdir/train_val${curau}.prototxt"
-test_iter: 470
+test_iter: 145
 # Carry out testing every 500 training iterations.
 test_interval: 100
-debug_info: false
+
 test_compute_loss: true
 # The base learning rate, momentum and the weight decay of the network.
 base_lr: 0.0005
@@ -31,6 +32,7 @@ snapshot_prefix: "$resdir/train${curau}_"
 solver_mode: GPU
 EOM
 
+
 FILE="$resdir/train_val${curau}.prototxt"
 /bin/cat <<EOM >$FILE
 name: "CIFAR10_quick"
@@ -51,8 +53,8 @@ layer {
     #new_height: 128
     #new_width: 96
     root_folder: "$datadir/$foldname/"
-    source: "$datadir/AU${curau}_training.txt"
-    balance: false
+    source: "$datadir/training_set${setnum}_AU${curau}.txt"
+    balance: true
     balance_axis: 0
     balance_coeff: 0.2
     batch_size: 100 
@@ -77,7 +79,7 @@ layer {
     #new_height: 128
     #ls new_width: 96
     root_folder: "$datadir/$foldname/"
-    source: "$datadir/AU${curau}_develop.txt"
+    source: "$datadir/develop_set${setnum}_AU${curau}.txt"
     balance: false
     balance_axis: 0
     balance_coeff: 0.2

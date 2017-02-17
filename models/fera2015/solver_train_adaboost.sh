@@ -52,7 +52,7 @@ layer {
     #new_width: 96
     root_folder: "$datadir/${foldname}/"
     source: "$datadir/AU${curau}_training.txt"
-    balance: true
+    balance: false
     balance_axis: 0
     balance_coeff: 0.2
     batch_size: 100 
