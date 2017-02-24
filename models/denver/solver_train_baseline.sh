@@ -9,7 +9,7 @@ FILE="$resdir/solver${curau}.prototxt"
 net: "$resdir/train_val${curau}.prototxt"
 test_iter: 145
 # Carry out testing every 500 training iterations.
-test_interval: 100
+test_interval: 200
 
 test_compute_loss: true
 # The base learning rate, momentum and the weight decay of the network.
@@ -25,7 +25,7 @@ display: 200
 # The maximum number of iterations
 max_iter: 3000
 # snapshot intermediate results
-snapshot: 100
+snapshot: 200
 snapshot_prefix: "$resdir/train${curau}_"
 
 # solver mode: CPU or GPU
@@ -238,25 +238,25 @@ layer {
     }
   }
 }
-layer {
-  name: "relu4"
-  type: "PReLU"
-  bottom: "ip1"
-  top: "relu4"
-}
-layer {
-  name: "drop1"
-  type: "Dropout"
-  bottom: "relu4"
-  top: "drop1"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
+#layer {
+#  name: "relu4"
+#  type: "PReLU"
+#  bottom: "ip1"
+#  top: "relu4"
+#}
+#layer {
+#  name: "drop1"
+#  type: "Dropout"
+#  bottom: "relu4"
+#  top: "drop1"
+#  dropout_param {
+#    dropout_ratio: 0.5
+#  }
+#}
 layer {
   name: "ip2"
   type: "InnerProduct"
-  bottom: "drop1"
+  bottom: "ip1"
   top: "ip2"
   param { lr_mult: 1 decay_mult: 1 }
   param { lr_mult: 2 decay_mult: 0 }

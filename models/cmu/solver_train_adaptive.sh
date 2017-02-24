@@ -11,7 +11,7 @@ FILE="$resdir/solver${curau}.prototxt"
 net: "$resdir/train_val${curau}.prototxt"
 test_iter: ${testnum}
 # Carry out testing every 500 training iterations.
-test_interval: 50
+test_interval: 200
 
 test_compute_loss: true
 # The base learning rate, momentum and the weight decay of the network.

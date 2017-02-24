@@ -16,12 +16,12 @@ datadir=$dir/DRMF_CUDA/
         do
         curAU=${aulist[${i}]}
 	scorefile=$resdir/outscore_baseline${curAU}.txt
-        rm $scorefile
+        #rm $scorefile
         if [ ! -e "$scorefile" ]
         then
     	    echo "$scorefile not exist"
-            ./models/cmu/solver_train_baseline.sh ${curAU} ${set} ${datadir} ${resdir} ${foldname} 11
-            ./build/tools/caffe train -gpu $1 -solver=$resdir/solver${curAU}.prototxt  #-weights=/media/datadisk/database/FERA2015/data_steps/CNNData/normWarpImage/AU_binary_fromFera2015.caffemodel
+            #./models/cmu/solver_train_baseline.sh ${curAU} ${set} ${datadir} ${resdir} ${foldname} 11
+            #./build/tools/caffe train -gpu $1 -solver=$resdir/solver${curAU}.prototxt  #-weights=/media/datadisk/database/FERA2015/data_steps/CNNData/normWarpImage/AU_binary_fromFera2015.caffemodel
         fi
         done
     done
