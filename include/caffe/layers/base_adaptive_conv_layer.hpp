@@ -85,7 +85,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<int> conv_input_shape_;
   /// @brief The spatial dimensions of the col_buffer.
   vector<int> col_buffer_shape_;
-  vector<int> weight_buffer_shape_;
+  //vector<int> weight_buffer_shape_;
   /// @brief The spatial dimensions of the output.
   vector<int> output_shape_;
   const vector<int>* bottom_shape_;
@@ -191,15 +191,16 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   int iter_;
   int min_iter_;
   int iter_afterflip_;
-  float up_ratio_;
-  float down_ratio_;
+  double up_ratio_;
+  double down_ratio_;
   float max_thresh_;
 
 
   AdaptiveConvolutionParameter conv_param_;
   Blob<Dtype> col_buffer_;
-  Blob<Dtype> weight_buffer_;
+  //Blob<Dtype> weight_buffer_;
   Blob<Dtype> kernel_diff_buffer_;
+  Blob<Dtype> weight_diff_;
   //Blob<Dtype> weight_filter_up_;
   //Blob<Dtype> weight_filter_down_;
  // Blob<Dtype> weight_ratio_up_;
@@ -209,7 +210,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<Dtype> bias_multiplier_;
   Blob<int> kernel_taken_;
   Blob<int> fixsize_;
-  Blob<Dtype> gaussian_kernel_;
+  //Blob<Dtype> gaussian_kernel_;
   //std::list<Dtype> diffhistory_;
 
 
