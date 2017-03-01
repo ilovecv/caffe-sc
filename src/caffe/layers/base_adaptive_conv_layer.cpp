@@ -877,8 +877,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::backward_gpu_bias(Dtype* bias,
 template <typename Dtype>
 void BaseAdaptiveConvolutionLayer<Dtype>::backward_gpu_kernel_size(const Dtype* top_diff,const Dtype* bottom_data,
 	    const Dtype* weights_up,const Dtype* weights_down,  Dtype* kernel_size_diff) {//the ouput_diff is top_diff, input is the bottom_data
-  if(iter_<=-1){
-		//kernel_size_diff[0]=0;
+  if(this->layer_param_.adaptiveconvolution_param().adaptive_term()==false){
 		return;
   }
   const Dtype* col_buff = bottom_data;
