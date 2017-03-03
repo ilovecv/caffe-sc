@@ -105,6 +105,7 @@ layer {
     pad: 2
     kernel_size: 4
     max_kernel_size: 9
+    adaptive_term: false
     stride: 1
     weight_filler {
       type: "xavier"
@@ -176,6 +177,7 @@ layer {
     kernel_size: 4
     max_kernel_size: 9
     stride: 1
+    adaptive_term: false
     weight_filler {
       type: "xavier"
     }
@@ -230,6 +232,7 @@ layer {
     kernel_size: 4
     max_kernel_size: 9
     stride: 1
+    adaptive_term: false
     weight_filler {
       type: "xavier"
     }

@@ -109,7 +109,8 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   bool Debug_;
   int check_iteration_;
   Blob<Dtype> weightone_multiplier_;
-
+  Blob<Dtype> weight_sub_;
+  Blob<Dtype> weight_intp_;
 
  private:
   // wrap im2col/col2im so we don't have to remember the (long) argument lists
@@ -200,7 +201,7 @@ class BaseAdaptiveConvolutionLayer : public Layer<Dtype> {
   Blob<Dtype> col_buffer_;
   //Blob<Dtype> weight_buffer_;
   Blob<Dtype> kernel_diff_buffer_;
-  Blob<Dtype> weight_diff_;
+
   //Blob<Dtype> weight_filter_up_;
   //Blob<Dtype> weight_filter_down_;
  // Blob<Dtype> weight_ratio_up_;

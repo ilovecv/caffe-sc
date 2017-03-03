@@ -91,18 +91,21 @@ layer {
 layer {
   name: "conv1"
   type: "AdaptiveConvolution"
+  #type: "Convolution"
   bottom: "data"
   top: "conv1"
-  param { lr_mult: 1 decay_mult: 1 }
-  param { lr_mult: 1 decay_mult: 1 }
-  param { lr_mult: 2 decay_mult: 0 }
-  param { lr_mult: 100 decay_mult: 0 }
-  param { lr_mult: 0 decay_mult: 0 }
+  param { lr_mult: 1 decay_mult: 1 } #weight_up
+  param { lr_mult: 1 decay_mult: 1 } #weight_down
+  param { lr_mult: 2 decay_mult: 0 } #bias
+  param { lr_mult: 100 decay_mult: 0 } #kernel size
+  param { lr_mult: 0 decay_mult: 0 } #down size
   adaptiveconvolution_param {
+  #convolution_param {
     num_output: 32
     pad: 2
     kernel_size: 4
     max_kernel_size: 9
+    adaptive_term: false
     stride: 1
     weight_filler {
       type: "xavier"
@@ -159,6 +162,7 @@ layer {
 layer {
   name: "conv2"
   type: "AdaptiveConvolution"
+  #type: "Convolution"
   bottom: "norm1"
   top: "conv2"
   param { lr_mult: 1 decay_mult: 1 }
@@ -166,12 +170,14 @@ layer {
   param { lr_mult: 2 decay_mult: 0 }
   param { lr_mult: 100 decay_mult: 0 }
   param { lr_mult: 0 decay_mult: 0 }
+  #convolution_param {
   adaptiveconvolution_param {
     num_output: 32
     pad: 2
     kernel_size: 4
     max_kernel_size: 9
     stride: 1
+    adaptive_term: false
     weight_filler {
       type: "xavier"
     }
@@ -211,6 +217,7 @@ layer {
 layer {
   name: "conv3"
   type: "AdaptiveConvolution"
+  #type: "Convolution"
   bottom: "norm2"
   top: "conv3"
   param { lr_mult: 1 decay_mult: 1 }
@@ -218,12 +225,14 @@ layer {
   param { lr_mult: 2 decay_mult: 0 }
   param { lr_mult: 100 decay_mult: 0 }
   param { lr_mult: 0 decay_mult: 0 }
+  #convolution_param {
   adaptiveconvolution_param {
     num_output: 64
     pad: 2
     kernel_size: 4
     max_kernel_size: 9
     stride: 1
+    adaptive_term: false
     weight_filler {
       type: "xavier"
     }
@@ -275,6 +284,21 @@ layer {
     }
   }
 }
+#layer {
+#  name: "relu4"
+#  type: "PReLU"
+#  bottom: "ip1"
+#  top: "relu4"
+#}
+#layer {
+#  name: "drop1"
+#  type: "Dropout"
+#  bottom: "relu4"
+#  top: "drop1"
+#  dropout_param {
+#    dropout_ratio: 0.5
+#  }
+#}
 layer {
   name: "ip2"
   type: "InnerProduct"
@@ -304,6 +328,12 @@ layer {
   bottom: "label"
   top: "loss"
 }
+#layer {
+#  name: "loss"
+#  type: "SoftmaxWithLoss"
+#  bottom: "ip2"
+#  bottom: "label"
+#}
 layer {
   name: "score"
   type: "Score"

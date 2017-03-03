@@ -10,7 +10,7 @@ datadir=$dir/DRMF_CUDA/
 #do /
     for run in 1 2 3 4 5
     do
-	resdir=$dir/testResult/${foldname}_adaptive_set${set}_run${run}/
+	resdir=$dir/testResult/${foldname}_adaptive3fix444_set${set}_run${run}/
 	mkdir $resdir
         for i in  0 1 2 3 4 5 6 7 8 9 10 11
         do

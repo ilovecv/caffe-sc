@@ -192,7 +192,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>&
       bias_filler->Fill(this->blobs_[2].get());
     }
   }
-  weight_diff_.Reshape(weight_shape);
+  weight_sub_.Reshape(weight_shape);
   this->blobs_[1].reset(new Blob<Dtype>(weight_shape));
   caffe_copy(this->blobs_[0]->count(),this->blobs_[0]->cpu_data(),this->blobs_[1]->mutable_cpu_data());
   //weight_filter_up_.Reshape(weight_shape);
@@ -364,7 +364,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
 	  Dtype* kernel_float_size=this->blobs_[3]->mutable_cpu_data();
 	  Dtype *weights_up =this->blobs_[0]->mutable_cpu_data();
 	  Dtype *weights_down =this->blobs_[1]->mutable_cpu_data();
-	  Dtype *weights_diff = weight_diff_.mutable_cpu_data();
+	  Dtype *weights_diff = weight_sub_.mutable_cpu_data();
 	  bool sizechange=false;
 	  weights_updown_forward();
 	  for (int i=0; i<num_output_; i++){
@@ -408,7 +408,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
 		  if(sizechange==true&&fixsize_channel[i]==0){
 			  kernel_size_taken_[num_output_*(int)(kernel_down_size[i])+i]+=1;
 			  if(kernel_size_taken_[num_output_*(int)(kernel_down_size[i])+i]>2){
-				  //fixsize_channel[i]=1;
+				  fixsize_channel[i]=1;
 			  }
 			  iter_afterflip_=0;
 		  }
@@ -883,7 +883,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::backward_gpu_kernel_size(const Dtype* 
   const Dtype* col_buff = bottom_data;
   //Dtype* weights_up = weight_ratio_up_.mutable_gpu_data();
   //Dtype* weights_down = weight_ratio_down_.mutable_gpu_data();
-  const Dtype* weight_diff=weight_diff_.gpu_data();
+  const Dtype* weight_sub=weight_sub_.gpu_data();
 	  //add another caffe_cpu_gemm with the
   Dtype* output = kernel_diff_buffer_.mutable_gpu_data();
   //printf("diff down_ratio=%f,diff up_ratio=%f\n",down_ratio,up_ratio);
@@ -894,7 +894,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::backward_gpu_kernel_size(const Dtype* 
   for (int g = 0; g < group_; ++g) {
     caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
         group_, conv_out_spatial_dim_, kernel_dim_,
-        (Dtype)1., weight_diff + weight_offset_ * g, col_buff + col_offset_ * g,
+        (Dtype)1., weight_sub + weight_offset_ * g, col_buff + col_offset_ * g,
         (Dtype)0., output + output_offset_ * g);//with kernal size round(k)+2
     //the kernel_dim_, weight_offset_, col_offset_ will be different
     //caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, conv_out_channels_ /
