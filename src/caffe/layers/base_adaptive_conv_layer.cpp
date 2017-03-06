@@ -364,7 +364,7 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
 	  Dtype* kernel_float_size=this->blobs_[3]->mutable_cpu_data();
 	  Dtype *weights_up =this->blobs_[0]->mutable_cpu_data();
 	  Dtype *weights_down =this->blobs_[1]->mutable_cpu_data();
-	  Dtype *weights_diff = weight_sub_.mutable_cpu_data();
+	  Dtype *weights_sub = weight_sub_.mutable_cpu_data();
 	  bool sizechange=false;
 	  weights_updown_forward();
 	  for (int i=0; i<num_output_; i++){
@@ -415,11 +415,11 @@ void BaseAdaptiveConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bo
 		  //weights_pad(weight_channel_offset_,kernel_down_size[i],weights_up+weight_channel_offset_*i);
 		  up_ratio_=(kernel_float_size[i]-kernel_down_size[i])/2;
 		  down_ratio_=(kernel_up_size[i]-kernel_float_size[i])/2;
-		  caffe_sub(weight_channel_offset_, weights_up+weight_channel_offset_*i, weights_down+weight_channel_offset_*i, weights_diff+weight_channel_offset_*i);
+		  caffe_sub(weight_channel_offset_, weights_up+weight_channel_offset_*i, weights_down+weight_channel_offset_*i, weights_sub+weight_channel_offset_*i);
 	  }
 	  if(Debug_){
 	     printf("weight diff:\n");
-	     for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%.4e ",weights_diff[j*9+k]);} printf("\n");}
+	     for(int j=0; j< 9; j++){for(int k=0; k< 9; k++){ printf("%.4e ",weights_sub[j*9+k]);} printf("\n");}
 	  }
   }
   else if(this->phase_==TEST){
@@ -523,8 +523,15 @@ template <typename Dtype>
 void BaseAdaptiveConvolutionLayer<Dtype>::update_kerneldiff_quene(){
   Dtype* kernel_float_diff=this->blobs_[3]->mutable_cpu_diff();
   //Dtype* kernel_float_size = this->blobs_[3]->mutable_cpu_data();
+  Dtype* kernel_down_size = this->blobs_[4]->mutable_cpu_data();
+  int* kernel_up_size=kernel_shape_up_.mutable_cpu_data();
   int* fixsize_channel = fixsize_.mutable_cpu_data();
+  Dtype* weights_up = this->blobs_[0]->mutable_cpu_diff();
+  Dtype* weights_down = this->blobs_[1]->mutable_cpu_diff();
   for(int i=0; i<num_output_;i++){
+	 weights_cut(weight_channel_offset_,kernel_down_size[i],weights_down+weight_channel_offset_*i);
+	 weights_cut(weight_channel_offset_,kernel_up_size[i],weights_up+weight_channel_offset_*i);
+	 caffe_cpu_axpby(weight_channel_offset_, (Dtype)down_ratio_, weights_down+weight_channel_offset_*i, (Dtype)up_ratio_,weights_up+weight_channel_offset_*i);
   	if(fixsize_channel[i]==1||iter_<min_iter_)
   		kernel_float_diff[i]=0;
   	//else if(kernel_float_diff[i]>max_thresh_)
