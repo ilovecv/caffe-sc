@@ -11,7 +11,7 @@ FILE="$resdir/solver${curau}.prototxt"
 net: "$resdir/train_val${curau}.prototxt"
 test_iter: ${testnum}
 # Carry out testing every 500 training iterations.
-test_interval: 50
+test_interval: 200
 
 test_compute_loss: true
 # The base learning rate, momentum and the weight decay of the network.
@@ -21,13 +21,13 @@ weight_decay: 0.06
 # The learning rate policy
 lr_policy: "step"
 gamma: 0.6
-stepsize: 400
+stepsize: 800
 # Display every 100 iterations
 display: 200
 # The maximum number of iterations
 max_iter: 3000
 # snapshot intermediate results
-snapshot: 100
+snapshot: 200
 snapshot_prefix: "$resdir/train${curau}_"
 
 # solver mode: CPU or GPU
@@ -108,7 +108,7 @@ layer {
     pad: 2
     kernel_size: 4
     max_kernel_size: 9
-    adaptive_term: false
+    adaptive_term: true
     stride: 1
     weight_filler {
       type: "xavier"
@@ -180,7 +180,7 @@ layer {
     kernel_size: 4
     max_kernel_size: 9
     stride: 1
-    adaptive_term: false
+    adaptive_term: true
     weight_filler {
       type: "xavier"
     }
@@ -235,7 +235,7 @@ layer {
     kernel_size: 4
     max_kernel_size: 9
     stride: 1
-    adaptive_term: false
+    adaptive_term: true
     weight_filler {
       type: "xavier"
     }
