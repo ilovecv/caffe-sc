@@ -11,7 +11,7 @@ FILE="$resdir/solver${curau}.prototxt"
 net: "$resdir/train_val${curau}.prototxt"
 test_iter: ${testnum}
 # Carry out testing every 500 training iterations.
-test_interval: 200
+test_interval: 50
 
 test_compute_loss: true
 # The base learning rate, momentum and the weight decay of the network.
@@ -27,7 +27,7 @@ display: 200
 # The maximum number of iterations
 max_iter: 3000
 # snapshot intermediate results
-snapshot: 200
+snapshot: 100
 snapshot_prefix: "$resdir/train${curau}_"
 
 # solver mode: CPU or GPU

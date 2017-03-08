@@ -14,7 +14,7 @@ datadir=$dir/DRMF_CUDA/
     do
     curAU=${aulist[${iau}]}
     scorefile=$resdir/outscore_baseline${curAU}.txt
-    rm $scorefile
+    #rm $scorefile
     if [ ! -e "$scorefile" ]
     then
     	echo "$scorefile not exist"
